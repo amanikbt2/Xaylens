@@ -1,4 +1,4 @@
-import { Platform } from 'react-native';
+import * as MediaLibrary from 'expo-media-library';
 import { CapturedMedia } from '../types/camera';
 
 export interface SaveMediaResult {
@@ -8,23 +8,6 @@ export interface SaveMediaResult {
 
 export const saveMediaToDevice = async (media: CapturedMedia): Promise<SaveMediaResult> => {
   try {
-    if (Platform.OS === 'web') {
-      if (typeof document === 'undefined') {
-        return { success: false, message: 'Web environment unavailable.' };
-      }
-      const a = document.createElement('a');
-      a.href = media.uri;
-      const ext = media.type === 'video' ? 'webm' : 'jpg';
-      a.download = `XayLens_${Date.now()}.${ext}`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      return { success: true, message: 'Media downloaded successfully.' };
-    }
-
-    // Lazy require on native platforms only so web bundlers never evaluate ExpoMediaLibraryNext
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const MediaLibrary = require('expo-media-library');
     const { status } = await MediaLibrary.requestPermissionsAsync();
     if (status !== 'granted') {
       return {

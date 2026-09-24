@@ -1,17 +1,15 @@
 import React, { forwardRef } from 'react';
+import { Platform } from 'react-native';
 import { CameraViewProps, CameraViewRef } from './cameraTypes';
 
-// Metro bundler will automatically import NativeCameraView.native.tsx on mobile
-// and WebCameraView.web.tsx on Web.
-// We also export the standard fallback here.
 let Implementation: React.ForwardRefExoticComponent<CameraViewProps & React.RefAttributes<CameraViewRef>>;
 
-try {
+if (Platform.OS === 'web') {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
-  Implementation = require('./NativeCameraView').PlatformCameraView;
-} catch {
+  Implementation = require('./WebCameraView.web').PlatformCameraView;
+} else {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
-  Implementation = require('./WebCameraView').PlatformCameraView;
+  Implementation = require('./NativeCameraView.native').PlatformCameraView;
 }
 
 export const PlatformCamera = forwardRef<CameraViewRef, CameraViewProps>((props, ref) => {
