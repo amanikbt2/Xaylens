@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: xaylens
+    runtime: static
+    buildCommand: npm install && npx expo export --platform web
+    staticPublishPath: ./dist
+    routes:
+      - type: rewrite
+        source: /privacy
+        destination: /privacy/index.html
+      - type: rewrite
+        source: /privacy/*
+        destination: /privacy/index.html
