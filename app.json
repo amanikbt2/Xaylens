@@ -8,7 +8,7 @@
     "userInterfaceStyle": "dark",
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.xaylens.app",
+      "bundleIdentifier": "com.amanikbt1.xaylens",
       "infoPlist": {
         "NSCameraUsageDescription": "Allow XayLens to access your camera to capture photos, record videos, and apply live face lenses.",
         "NSMicrophoneUsageDescription": "Allow XayLens to access your microphone to record audio with your video lenses.",
@@ -17,7 +17,8 @@
       }
     },
     "android": {
-      "package": "com.xaylens.app",
+      "package": "com.amanikbt1.xaylens",
+      "versionCode": 1,
       "adaptiveIcon": {
         "backgroundColor": "#09090b",
         "foregroundImage": "./assets/android-icon-foreground.png",
