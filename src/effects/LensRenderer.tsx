@@ -10,7 +10,7 @@ import Svg, {
   G,
   Path,
 } from 'react-native-svg';
-import { Lens } from '../types/lens';
+import { Lens, FaceLandmarks } from '../types/lens';
 import { FaceTracker } from './faceTracker';
 import { FaceTrackingState, DEFAULT_TRACKING_STATE } from './effectTypes';
 import {
@@ -24,12 +24,13 @@ interface LensRendererProps {
   lens: Lens;
   width?: number;
   height?: number;
+  landmarks?: FaceLandmarks;
 }
 
 const { width: defaultWidth, height: defaultHeight } = Dimensions.get('window');
 
 export const LensRenderer: React.FC<LensRendererProps> = React.memo(
-  ({ lens, width = defaultWidth, height = defaultHeight }) => {
+  ({ lens, width = defaultWidth, height = defaultHeight, landmarks: externalLandmarks }) => {
     const [trackingState, setTrackingState] =
       useState<FaceTrackingState>(DEFAULT_TRACKING_STATE);
     const [tick, setTick] = useState(0);
@@ -85,7 +86,7 @@ export const LensRenderer: React.FC<LensRendererProps> = React.memo(
       return null;
     }
 
-    const { landmarks } = trackingState;
+    const landmarks = externalLandmarks || trackingState.landmarks;
     const noseX = landmarks.nose.x * width;
     const noseY = landmarks.nose.y * height;
     const eyeLX = landmarks.leftEye.x * width;

@@ -3,80 +3,101 @@ import { DEFAULT_LANDMARKS, FaceTrackingState } from './effectTypes';
 
 export class FaceTracker {
   private currentLandmarks: FaceLandmarks = { ...DEFAULT_LANDMARKS };
-  private targetLandmarks: FaceLandmarks = { ...DEFAULT_LANDMARKS };
-  private smoothingFactor = 0.25; // 0 (stiff) to 1 (instant)
+  private detectedLandmarks: FaceLandmarks = { ...DEFAULT_LANDMARKS };
+  private lastDetectionTimestamp = 0;
+  private smoothingFactor = 0.45; // Fast, responsive lock onto real face movement
   private timeOffset = 0;
 
   /**
-   * Update tracker clock for organic natural head sway when idle
+   * Step the tracker forward and return smoothly interpolated real-time landmarks
    */
   public step(deltaTimeMs: number): FaceTrackingState {
     this.timeOffset += deltaTimeMs * 0.001;
+    const now = Date.now();
+    const hasRecentDetection = now - this.lastDetectionTimestamp < 1800;
 
-    // Subtle natural head movement dynamics
-    const swayX = Math.sin(this.timeOffset * 0.8) * 0.025;
-    const swayY = Math.cos(this.timeOffset * 0.6) * 0.015;
-    const tiltRoll = Math.sin(this.timeOffset * 0.5) * 3;
+    // If no face was recently detected by camera CV, slowly return toward center with tiny natural breathing
+    const base = hasRecentDetection ? this.detectedLandmarks : DEFAULT_LANDMARKS;
+    const microSwayX = hasRecentDetection
+      ? Math.sin(this.timeOffset * 1.4) * 0.002
+      : Math.sin(this.timeOffset * 0.8) * 0.015;
+    const microSwayY = hasRecentDetection
+      ? Math.cos(this.timeOffset * 1.1) * 0.002
+      : Math.cos(this.timeOffset * 0.6) * 0.01;
 
-    this.targetLandmarks = {
-      ...DEFAULT_LANDMARKS,
-      nose: { x: DEFAULT_LANDMARKS.nose.x + swayX, y: DEFAULT_LANDMARKS.nose.y + swayY },
-      leftEye: { x: DEFAULT_LANDMARKS.leftEye.x + swayX, y: DEFAULT_LANDMARKS.leftEye.y + swayY },
-      rightEye: { x: DEFAULT_LANDMARKS.rightEye.x + swayX, y: DEFAULT_LANDMARKS.rightEye.y + swayY },
-      mouth: { x: DEFAULT_LANDMARKS.mouth.x + swayX, y: DEFAULT_LANDMARKS.mouth.y + swayY },
-      forehead: { x: DEFAULT_LANDMARKS.forehead.x + swayX, y: DEFAULT_LANDMARKS.forehead.y + swayY },
-      chin: { x: DEFAULT_LANDMARKS.chin.x + swayX, y: DEFAULT_LANDMARKS.chin.y + swayY },
-      roll: tiltRoll,
+    const target: FaceLandmarks = {
+      ...base,
+      nose: { x: base.nose.x + microSwayX, y: base.nose.y + microSwayY },
+      leftEye: { x: base.leftEye.x + microSwayX, y: base.leftEye.y + microSwayY },
+      rightEye: { x: base.rightEye.x + microSwayX, y: base.rightEye.y + microSwayY },
+      mouth: { x: base.mouth.x + microSwayX, y: base.mouth.y + microSwayY },
+      forehead: { x: base.forehead.x + microSwayX, y: base.forehead.y + microSwayY },
+      chin: { x: base.chin.x + microSwayX, y: base.chin.y + microSwayY },
+      faceWidth: base.faceWidth,
+      faceHeight: base.faceHeight,
+      roll: base.roll,
     };
 
-    // Smooth lerp (exponential smoothing)
+    const alpha = hasRecentDetection ? this.smoothingFactor : 0.12;
+
     this.currentLandmarks = {
-      ...this.targetLandmarks,
+      ...target,
       nose: {
-        x: this.lerp(this.currentLandmarks.nose.x, this.targetLandmarks.nose.x, this.smoothingFactor),
-        y: this.lerp(this.currentLandmarks.nose.y, this.targetLandmarks.nose.y, this.smoothingFactor),
+        x: this.lerp(this.currentLandmarks.nose.x, target.nose.x, alpha),
+        y: this.lerp(this.currentLandmarks.nose.y, target.nose.y, alpha),
       },
       leftEye: {
-        x: this.lerp(this.currentLandmarks.leftEye.x, this.targetLandmarks.leftEye.x, this.smoothingFactor),
-        y: this.lerp(this.currentLandmarks.leftEye.y, this.targetLandmarks.leftEye.y, this.smoothingFactor),
+        x: this.lerp(this.currentLandmarks.leftEye.x, target.leftEye.x, alpha),
+        y: this.lerp(this.currentLandmarks.leftEye.y, target.leftEye.y, alpha),
       },
       rightEye: {
-        x: this.lerp(this.currentLandmarks.rightEye.x, this.targetLandmarks.rightEye.x, this.smoothingFactor),
-        y: this.lerp(this.currentLandmarks.rightEye.y, this.targetLandmarks.rightEye.y, this.smoothingFactor),
+        x: this.lerp(this.currentLandmarks.rightEye.x, target.rightEye.x, alpha),
+        y: this.lerp(this.currentLandmarks.rightEye.y, target.rightEye.y, alpha),
       },
       forehead: {
-        x: this.lerp(this.currentLandmarks.forehead.x, this.targetLandmarks.forehead.x, this.smoothingFactor),
-        y: this.lerp(this.currentLandmarks.forehead.y, this.targetLandmarks.forehead.y, this.smoothingFactor),
+        x: this.lerp(this.currentLandmarks.forehead.x, target.forehead.x, alpha),
+        y: this.lerp(this.currentLandmarks.forehead.y, target.forehead.y, alpha),
       },
       mouth: {
-        x: this.lerp(this.currentLandmarks.mouth.x, this.targetLandmarks.mouth.x, this.smoothingFactor),
-        y: this.lerp(this.currentLandmarks.mouth.y, this.targetLandmarks.mouth.y, this.smoothingFactor),
+        x: this.lerp(this.currentLandmarks.mouth.x, target.mouth.x, alpha),
+        y: this.lerp(this.currentLandmarks.mouth.y, target.mouth.y, alpha),
       },
       chin: {
-        x: this.lerp(this.currentLandmarks.chin.x, this.targetLandmarks.chin.x, this.smoothingFactor),
-        y: this.lerp(this.currentLandmarks.chin.y, this.targetLandmarks.chin.y, this.smoothingFactor),
+        x: this.lerp(this.currentLandmarks.chin.x, target.chin.x, alpha),
+        y: this.lerp(this.currentLandmarks.chin.y, target.chin.y, alpha),
       },
-      roll: this.lerp(this.currentLandmarks.roll, this.targetLandmarks.roll, this.smoothingFactor),
+      faceWidth: this.lerp(this.currentLandmarks.faceWidth, target.faceWidth, alpha),
+      faceHeight: this.lerp(this.currentLandmarks.faceHeight, target.faceHeight, alpha),
+      roll: this.lerp(this.currentLandmarks.roll, target.roll, alpha),
     };
 
     return {
       hasFace: true,
       landmarks: this.currentLandmarks,
-      confidence: 0.95,
-      isMouthOpen: Math.sin(this.timeOffset * 1.5) > 0.7,
+      confidence: hasRecentDetection ? 0.98 : 0.75,
+      isMouthOpen: false,
       isBlinking: false,
-      rotation: { yaw: swayX * 10, pitch: swayY * 10, roll: tiltRoll },
+      rotation: {
+        yaw: (this.currentLandmarks.nose.x - 0.5) * 45,
+        pitch: (this.currentLandmarks.nose.y - 0.5) * 35,
+        roll: this.currentLandmarks.roll,
+      },
     };
   }
 
   /**
-   * Supply external landmark detection (e.g. from camera detector or browser FaceDetector)
+   * Update target landmarks from real-time camera face/body detection
    */
   public updateFromDetector(detected: Partial<FaceLandmarks>) {
-    this.targetLandmarks = {
-      ...this.targetLandmarks,
+    this.lastDetectionTimestamp = Date.now();
+    this.detectedLandmarks = {
+      ...this.detectedLandmarks,
       ...detected,
     };
+  }
+
+  public getCurrentLandmarks(): FaceLandmarks {
+    return this.currentLandmarks;
   }
 
   private lerp(start: number, end: number, amt: number) {

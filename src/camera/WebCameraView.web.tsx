@@ -24,6 +24,8 @@ import {
   WebVideoFaceDetector,
 } from '../effects/webglFaceShader';
 import { FaceTracker } from '../effects/faceTracker';
+import { DEFAULT_LANDMARKS } from '../effects/effectTypes';
+import { FaceLandmarks } from '../types/lens';
 
 export const PlatformCameraView = forwardRef<CameraViewRef, CameraViewProps>(
   ({ facing, flash, activeLens, onCameraReady, onMountError, style }, ref) => {
@@ -46,6 +48,8 @@ export const PlatformCameraView = forwardRef<CameraViewRef, CameraViewProps>(
     const [hasPermission, setHasPermission] = useState<boolean | null>(null);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
     const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
+    const [liveLandmarks, setLiveLandmarks] =
+      useState<FaceLandmarks>(DEFAULT_LANDMARKS);
 
     const handleLayout = (e: LayoutChangeEvent) => {
       const { width, height } = e.nativeEvent.layout;
@@ -180,20 +184,22 @@ export const PlatformCameraView = forwardRef<CameraViewRef, CameraViewProps>(
       const uForehead = gl.getUniformLocation(program, 'u_forehead');
       const uChin = gl.getUniformLocation(program, 'u_chin');
       const uFaceScale = gl.getUniformLocation(program, 'u_faceScale');
+      const uRoll = gl.getUniformLocation(program, 'u_roll');
       const uTime = gl.getUniformLocation(program, 'u_time');
 
       let animId: number;
       let lastFrameTime = performance.now();
       let lastDetectTime = 0;
+      let lastOverlaySyncTime = 0;
       const startTime = performance.now();
 
       const renderFrame = (now: number) => {
         const dt = Math.min(now - lastFrameTime, 60);
         lastFrameTime = now;
 
-        // Periodically detect real face coordinates from video stream (20fps)
+        // Detect real face & upper-body coordinates from video stream (~28fps)
         if (
-          now - lastDetectTime > 55 &&
+          now - lastDetectTime > 35 &&
           video.readyState >= 2 &&
           detectorRef.current
         ) {
@@ -210,6 +216,11 @@ export const PlatformCameraView = forwardRef<CameraViewRef, CameraViewProps>(
 
         const state = trackerRef.current.step(dt);
         const lm = state.landmarks;
+
+        if (now - lastOverlaySyncTime > 32) {
+          lastOverlaySyncTime = now;
+          setLiveLandmarks({ ...lm });
+        }
 
         if (video.readyState >= 2 && video.videoWidth > 0) {
           const targetW = canvas.clientWidth || 720;
@@ -244,6 +255,7 @@ export const PlatformCameraView = forwardRef<CameraViewRef, CameraViewProps>(
           gl.uniform2f(uForehead, lm.forehead.x, lm.forehead.y);
           gl.uniform2f(uChin, lm.chin.x, lm.chin.y);
           gl.uniform1f(uFaceScale, (lm.faceWidth || 0.35) / 0.32);
+          gl.uniform1f(uRoll, ((lm.roll || 0) * Math.PI) / 180.0);
           gl.uniform1f(uTime, (now - startTime) * 0.001);
 
           gl.drawArrays(gl.TRIANGLES, 0, 6);
@@ -408,12 +420,13 @@ export const PlatformCameraView = forwardRef<CameraViewRef, CameraViewProps>(
           </View>
         )}
 
-        {/* 3D AR Overlays (Puppy, Bunny, Funny Glasses, Alien Antennae) */}
+        {/* 3D AR Overlays (Puppy, Bunny, Funny Glasses, Alien Antennae) following live tracked landmarks */}
         {dimensions.width > 0 && dimensions.height > 0 && (
           <LensRenderer
             lens={activeLens}
             width={dimensions.width}
             height={dimensions.height}
+            landmarks={liveLandmarks}
           />
         )}
       </View>
