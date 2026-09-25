@@ -4,7 +4,7 @@ export const APP_CONFIG = {
   version: '1.0.0',
   buildNumber: '1',
   author: 'XayLens Labs',
-  supportEmail: 'support@xaylens.app',
+  supportEmail: 'amanikbt1@gmail.com',
   privacyPolicyUrl: 'https://xaylens.app/privacy',
   maxVideoDurationSeconds: 60,
   defaultFlashMode: 'off' as const,
