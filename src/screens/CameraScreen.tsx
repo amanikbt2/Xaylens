@@ -1,13 +1,12 @@
-import React, { useRef, useState, useCallback } from 'react';
+import React, { useRef, useState, useCallback, useMemo } from 'react';
 import {
   View,
   StyleSheet,
   TouchableOpacity,
   Text,
   ActivityIndicator,
-  Animated,
   Platform,
-  Image,
+  PanResponder,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -15,8 +14,6 @@ import { PlatformCamera } from '../camera/PlatformCamera';
 import { CameraViewRef } from '../camera/cameraTypes';
 import { CameraControls } from '../components/CameraControls';
 import { LensCarousel } from '../components/LensCarousel';
-import { ShutterButton } from '../components/ShutterButton';
-import { ModeSelector } from '../components/ModeSelector';
 import { RecordingIndicator } from '../components/RecordingIndicator';
 import { PermissionView } from '../components/PermissionView';
 import { CameraErrorView } from '../components/CameraErrorView';
@@ -33,14 +30,12 @@ export const CameraScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
   const cameraRef = useRef<CameraViewRef>(null);
 
-  // Hooks
+  // Camera state (always video mode like Snapchat)
   const {
     facing,
     toggleFacing,
     flash,
     cycleFlash,
-    mode,
-    switchMode,
     cameraError,
     handleCameraReady,
     handleCameraError,
@@ -51,11 +46,6 @@ export const CameraScreen: React.FC = () => {
   const [previewMedia, setPreviewMedia] = useState<CapturedMedia | null>(null);
   const [isPreviewVisible, setIsPreviewVisible] = useState(false);
   const [isSettingsVisible, setIsSettingsVisible] = useState(false);
-  const [lastCapturedThumb, setLastCapturedThumb] = useState<string | null>(null);
-  const [isCapturing, setIsCapturing] = useState(false);
-
-  // Shutter flash effect
-  const shutterFlashAnim = useRef(new Animated.Value(0)).current;
 
   // Video Recording Hook
   const handleMaxDuration = useCallback(async () => {
@@ -75,56 +65,71 @@ export const CameraScreen: React.FC = () => {
   const { isLoading, hasCameraPermission, canAskAgain, requestAllPermissions } =
     usePermissions();
 
-  // Shutter Click Handler
-  const handleShutterPress = async () => {
-    if (isCapturing) return;
+  // Start video recording
+  const handleStartVideo = useCallback(async () => {
+    if (isRecording) return;
+    startRecording();
+    if (cameraRef.current) {
+      await cameraRef.current.startRecordingAsync();
+    }
+  }, [isRecording, startRecording]);
 
-    if (mode === 'photo') {
-      setIsCapturing(true);
-      // Trigger white flash animation
-      Animated.sequence([
-        Animated.timing(shutterFlashAnim, {
-          toValue: 0.85,
-          duration: 75,
-          useNativeDriver: true,
-        }),
-        Animated.timing(shutterFlashAnim, {
-          toValue: 0,
-          duration: 150,
-          useNativeDriver: true,
-        }),
-      ]).start();
-
-      if (cameraRef.current) {
-        const media = await cameraRef.current.takePictureAsync();
-        setIsCapturing(false);
-        if (media) {
-          setPreviewMedia(media);
-          setLastCapturedThumb(media.uri);
-          setIsPreviewVisible(true);
-        }
-      } else {
-        setIsCapturing(false);
-      }
-    } else {
-      // Video mode
-      if (isRecording) {
-        stopRecording();
-        if (cameraRef.current) {
-          const media = await cameraRef.current.stopRecordingAsync();
-          if (media) {
-            setPreviewMedia(media);
-            setIsPreviewVisible(true);
-          }
-        }
-      } else {
-        startRecording();
-        if (cameraRef.current) {
-          await cameraRef.current.startRecordingAsync();
-        }
+  // Stop video recording
+  const handleStopVideo = useCallback(async () => {
+    if (!isRecording) return;
+    stopRecording();
+    if (cameraRef.current) {
+      const media = await cameraRef.current.stopRecordingAsync();
+      if (media) {
+        setPreviewMedia(media);
+        setIsPreviewVisible(true);
       }
     }
-  };
+  }, [isRecording, stopRecording]);
+
+  // Toggle video recording when tapping the center Big Record Button
+  const handleRecordPress = useCallback(async () => {
+    if (isRecording) {
+      await handleStopVideo();
+    } else {
+      await handleStartVideo();
+    }
+  }, [isRecording, handleStartVideo, handleStopVideo]);
+
+  // Full-screen horizontal swipe to switch to next / previous lens effect
+  const activeLensIndexRef = useRef(0);
+  activeLensIndexRef.current = lenses.findIndex((l) => l.id === activeLens.id);
+
+  const panResponder = useMemo(
+    () =>
+      PanResponder.create({
+        onMoveShouldSetPanResponder: (_, gestureState) => {
+          return (
+            Math.abs(gestureState.dx) > 28 &&
+            Math.abs(gestureState.dx) > Math.abs(gestureState.dy) * 1.4
+          );
+        },
+        onPanResponderRelease: (_, gestureState) => {
+          if (gestureState.dx < -40) {
+            // Swipe Left -> Next Lens
+            const nextIdx = Math.min(
+              lenses.length - 1,
+              activeLensIndexRef.current + 1
+            );
+            if (lenses[nextIdx] && nextIdx !== activeLensIndexRef.current) {
+              selectLens(lenses[nextIdx], facing);
+            }
+          } else if (gestureState.dx > 40) {
+            // Swipe Right -> Previous Lens
+            const prevIdx = Math.max(0, activeLensIndexRef.current - 1);
+            if (lenses[prevIdx] && prevIdx !== activeLensIndexRef.current) {
+              selectLens(lenses[prevIdx], facing);
+            }
+          }
+        },
+      }),
+    [lenses, selectLens, facing]
+  );
 
   // 1. Loading state
   if (isLoading) {
@@ -162,13 +167,13 @@ export const CameraScreen: React.FC = () => {
     <View style={styles.root}>
       {/* Centered container for desktop web responsiveness */}
       <View style={styles.desktopWrapper}>
-        <View style={styles.cameraContainer}>
-          {/* Hardware / Web Camera Viewport */}
+        <View style={styles.cameraContainer} {...panResponder.panHandlers}>
+          {/* Full-Screen Pure Camera Viewport (Always Video Mode) */}
           <PlatformCamera
             ref={cameraRef}
             facing={facing}
             flash={flash}
-            mode={mode}
+            mode="video"
             activeLens={activeLens}
             isRecording={isRecording}
             onCameraReady={handleCameraReady}
@@ -176,98 +181,77 @@ export const CameraScreen: React.FC = () => {
             style={StyleSheet.absoluteFill}
           />
 
-          {/* Shutter Flash Animation Overlay */}
-          <Animated.View
-            style={[
-              StyleSheet.absoluteFill,
-              styles.shutterFlash,
-              { opacity: shutterFlashAnim },
-            ]}
-            pointerEvents="none"
-          />
-
-          {/* TOP CONTROLS */}
-          <View style={[styles.topControlsWrapper, { paddingTop: insets.top || 16 }]}>
+          {/* TOP MINIMAL FLOATING CONTROLS (Snapchat Style) */}
+          <View
+            style={[styles.topControlsWrapper, { paddingTop: insets.top || 14 }]}
+            pointerEvents="box-none"
+          >
             <CameraControls
               flash={flash}
               onCycleFlash={cycleFlash}
+              onToggleFacing={toggleFacing}
               onOpenSettings={() => setIsSettingsVisible(true)}
+              isRecording={isRecording}
             />
 
-            {/* Notice tag if lens suggests front camera */}
-            {lensNotice && (
-              <View style={styles.noticePill}>
-                <Ionicons name="information-circle-outline" size={16} color={Colors.accentYellow} />
-                <Text style={styles.noticeText}>{lensNotice}</Text>
+            {/* Video Recording Timer Pill */}
+            {isRecording && (
+              <View style={styles.recordingTimerFloating}>
+                <RecordingIndicator formattedTime={formattedTime} />
               </View>
             )}
 
-            {/* Video Recording Indicator */}
-            {isRecording && <RecordingIndicator formattedTime={formattedTime} />}
+            {/* Subtle notice tag if lens suggests front camera */}
+            {lensNotice && !isRecording && (
+              <View style={styles.noticePill}>
+                <Ionicons
+                  name="information-circle-outline"
+                  size={15}
+                  color={Colors.accentYellow}
+                />
+                <Text style={styles.noticeText}>{lensNotice}</Text>
+              </View>
+            )}
           </View>
 
-          {/* BOTTOM CONTROLS */}
-          <View style={[styles.bottomControlsWrapper, { paddingBottom: insets.bottom || 24 }]}>
-            {/* Horizontal Lens Carousel */}
-            {!isRecording && (
-              <LensCarousel
-                lenses={lenses}
-                activeLens={activeLens}
-                onSelectLens={(lens) => selectLens(lens, facing)}
-              />
-            )}
-
-            {/* Mode Selector (Photo / Video) */}
-            <ModeSelector
-              mode={mode}
-              onSelectMode={switchMode}
-              disabled={isRecording}
+          {/* BOTTOM UNIFIED SNAPCHAT SHUTTER + SWIPE-THROUGH LENS CAROUSEL */}
+          <View
+            style={[
+              styles.bottomControlsWrapper,
+              { paddingBottom: Math.max(insets.bottom, 20) },
+            ]}
+            pointerEvents="box-none"
+          >
+            <LensCarousel
+              lenses={lenses}
+              activeLens={activeLens}
+              isRecording={isRecording}
+              onSelectLens={(lens) => selectLens(lens, facing)}
+              onRecordPress={handleRecordPress}
+              onHoldStart={handleStartVideo}
+              onHoldEnd={handleStopVideo}
             />
 
-            {/* Shutter Bar with Gallery & Camera Switch */}
-            <View style={styles.shutterBar}>
-              {/* Media Thumbnail / Gallery button */}
+            {/* Floating Last Recorded Clip Pill (only shown when a video was captured) */}
+            {previewMedia && !isRecording && (
               <TouchableOpacity
-                style={styles.auxButton}
-                onPress={() => {
-                  if (lastCapturedThumb && previewMedia) {
-                    setIsPreviewVisible(true);
-                  }
-                }}
-                activeOpacity={0.7}
-                accessibilityLabel="View captured media"
+                style={[
+                  styles.lastVideoFloatingBtn,
+                  { bottom: Math.max(insets.bottom, 20) + 22 },
+                ]}
+                onPress={() => setIsPreviewVisible(true)}
+                activeOpacity={0.8}
+                accessibilityLabel="Replay last recorded video"
               >
-                {lastCapturedThumb ? (
-                  <Image source={{ uri: lastCapturedThumb }} style={styles.thumbImage} />
-                ) : (
-                  <Ionicons name="images-outline" size={24} color={Colors.white} />
-                )}
+                <Ionicons name="play-circle" size={22} color={Colors.accentYellow} />
+                <Text style={styles.lastVideoText}>Last Clip</Text>
               </TouchableOpacity>
-
-              {/* Central Shutter Button */}
-              <ShutterButton
-                mode={mode}
-                isRecording={isRecording}
-                onPress={handleShutterPress}
-                disabled={isCapturing}
-              />
-
-              {/* Camera Switch (Flip) Button */}
-              <TouchableOpacity
-                style={styles.auxButton}
-                onPress={toggleFacing}
-                activeOpacity={0.7}
-                disabled={isRecording}
-                accessibilityLabel="Flip camera facing"
-              >
-                <Ionicons name="camera-reverse-outline" size={26} color={Colors.white} />
-              </TouchableOpacity>
-            </View>
+            )}
           </View>
         </View>
       </View>
 
-      {/* Captured Media Preview Modal */}
+      {/* Recorded Video Preview Modal */}
       <MediaPreviewModal
         visible={isPreviewVisible}
         media={previewMedia}
@@ -315,10 +299,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
   },
-  shutterFlash: {
-    backgroundColor: '#ffffff',
-    zIndex: 50,
-  },
   topControlsWrapper: {
     position: 'absolute',
     top: 0,
@@ -327,14 +307,19 @@ const styles = StyleSheet.create({
     zIndex: 30,
     alignItems: 'center',
   },
+  recordingTimerFloating: {
+    position: 'absolute',
+    top: 18,
+    alignSelf: 'center',
+  },
   noticePill: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(24, 24, 27, 0.85)',
+    backgroundColor: 'rgba(12, 12, 16, 0.72)',
     paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingVertical: 5,
     borderRadius: 16,
-    marginTop: 8,
+    marginTop: 6,
     borderWidth: 1,
     borderColor: 'rgba(250, 204, 21, 0.35)',
   },
@@ -352,27 +337,22 @@ const styles = StyleSheet.create({
     zIndex: 30,
     alignItems: 'center',
   },
-  shutterBar: {
+  lastVideoFloatingBtn: {
+    position: 'absolute',
+    left: 16,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-around',
-    width: '100%',
-    paddingHorizontal: 32,
-  },
-  auxButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: Colors.surfaceTranslucent,
+    backgroundColor: 'rgba(12, 12, 16, 0.68)',
+    paddingHorizontal: 11,
+    paddingVertical: 7,
+    borderRadius: 20,
     borderWidth: 1,
-    borderColor: Colors.borderGlass,
-    justifyContent: 'center',
-    alignItems: 'center',
-    overflow: 'hidden',
+    borderColor: 'rgba(250, 204, 21, 0.45)',
+    gap: 5,
   },
-  thumbImage: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+  lastVideoText: {
+    color: Colors.white,
+    fontSize: 11,
+    fontWeight: '700',
   },
 });

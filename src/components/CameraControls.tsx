@@ -8,14 +8,17 @@ import { BrandBadge } from './BrandBadge';
 interface CameraControlsProps {
   flash: FlashMode;
   onCycleFlash: () => void;
+  onToggleFacing: () => void;
   onOpenSettings: () => void;
-  gridEnabled?: boolean;
+  isRecording?: boolean;
 }
 
 export const CameraControls: React.FC<CameraControlsProps> = ({
   flash,
   onCycleFlash,
+  onToggleFacing,
   onOpenSettings,
+  isRecording = false,
 }) => {
   const getFlashIcon = () => {
     switch (flash) {
@@ -34,34 +37,55 @@ export const CameraControls: React.FC<CameraControlsProps> = ({
   };
 
   return (
-    <View style={styles.container}>
-      {/* Flash toggle */}
-      <TouchableOpacity
-        style={styles.iconButton}
-        onPress={onCycleFlash}
-        activeOpacity={0.7}
-        accessibilityLabel={`Flash mode: currently ${flash}`}
-        accessibilityRole="button"
-      >
-        <Ionicons name={getFlashIcon()} size={22} color={getFlashColor()} />
-        {flash === 'auto' && (
-          <Text style={styles.autoBadge}>A</Text>
-        )}
-      </TouchableOpacity>
-
-      {/* Subtle branding wordmark */}
+    <View style={styles.container} pointerEvents="box-none">
+      {/* Top-Left: Subtle XayLens Floating Badge */}
       <BrandBadge />
 
-      {/* Settings button */}
-      <TouchableOpacity
-        style={styles.iconButton}
-        onPress={onOpenSettings}
-        activeOpacity={0.7}
-        accessibilityLabel="Camera settings"
-        accessibilityRole="button"
-      >
-        <Ionicons name="settings-outline" size={22} color={Colors.white} />
-      </TouchableOpacity>
+      {/* Top-Right: Snapchat-style vertical floating glass pill */}
+      <View style={styles.rightVerticalPill}>
+        {/* Flip Camera (Front / Back) */}
+        <TouchableOpacity
+          style={styles.pillActionBtn}
+          onPress={onToggleFacing}
+          disabled={isRecording}
+          activeOpacity={0.7}
+          accessibilityLabel="Flip camera facing"
+          accessibilityRole="button"
+        >
+          <Ionicons
+            name="camera-reverse-outline"
+            size={23}
+            color={isRecording ? 'rgba(255,255,255,0.4)' : Colors.white}
+          />
+        </TouchableOpacity>
+
+        <View style={styles.pillDivider} />
+
+        {/* Flash Toggle */}
+        <TouchableOpacity
+          style={styles.pillActionBtn}
+          onPress={onCycleFlash}
+          activeOpacity={0.7}
+          accessibilityLabel={`Flash mode: currently ${flash}`}
+          accessibilityRole="button"
+        >
+          <Ionicons name={getFlashIcon()} size={21} color={getFlashColor()} />
+          {flash === 'auto' && <Text style={styles.autoBadge}>A</Text>}
+        </TouchableOpacity>
+
+        <View style={styles.pillDivider} />
+
+        {/* Settings */}
+        <TouchableOpacity
+          style={styles.pillActionBtn}
+          onPress={onOpenSettings}
+          activeOpacity={0.7}
+          accessibilityLabel="Camera settings"
+          accessibilityRole="button"
+        >
+          <Ionicons name="options-outline" size={21} color={Colors.white} />
+        </TouchableOpacity>
+      </View>
     </View>
   );
 };
@@ -69,28 +93,38 @@ export const CameraControls: React.FC<CameraControlsProps> = ({
 const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingTop: 10,
-    paddingBottom: 8,
+    paddingHorizontal: 16,
+    paddingTop: 8,
     width: '100%',
     zIndex: 20,
   },
-  iconButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: Colors.surfaceTranslucent,
+  rightVerticalPill: {
+    backgroundColor: 'rgba(12, 12, 16, 0.52)',
+    borderRadius: 24,
     borderWidth: 1,
-    borderColor: Colors.borderGlass,
+    borderColor: 'rgba(255, 255, 255, 0.16)',
+    paddingVertical: 4,
+    paddingHorizontal: 2,
+    alignItems: 'center',
+  },
+  pillActionBtn: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  pillDivider: {
+    width: 22,
+    height: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
   },
   autoBadge: {
     position: 'absolute',
     bottom: 6,
-    right: 8,
+    right: 6,
     color: Colors.accentYellow,
     fontSize: 9,
     fontWeight: '800',

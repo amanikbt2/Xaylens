@@ -9,5 +9,5 @@ export const APP_CONFIG = {
   maxVideoDurationSeconds: 60,
   defaultFlashMode: 'off' as const,
   defaultCameraFacing: 'front' as const,
-  defaultCaptureMode: 'photo' as const,
+  defaultCaptureMode: 'video' as const,
 };
