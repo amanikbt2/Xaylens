@@ -32,6 +32,8 @@ interface LensCarouselProps {
   onHoldEnd?: () => void;
 }
 
+const SHUTTER_RING_SIZE = 84;
+
 export const LensCarousel: React.FC<LensCarouselProps> = ({
   lenses,
   activeLens,
@@ -88,7 +90,7 @@ export const LensCarousel: React.FC<LensCarouselProps> = ({
     };
   }, [isRecording, ringPulseAnim]);
 
-  // Scroll FlatList so the target lens sits dead-center inside the glowing ring
+  // Scroll FlatList so the target lens sits dead-center inside the center ring
   const scrollToLensIndex = useCallback(
     (index: number, animated = true) => {
       if (index < 0 || index >= lenses.length || !flatListRef.current) return;
@@ -98,7 +100,7 @@ export const LensCarousel: React.FC<LensCarouselProps> = ({
           animated,
         });
       } catch {
-        // Ignore layout race
+        // Ignore layout timing
       }
     },
     [lenses.length]
@@ -107,13 +109,10 @@ export const LensCarousel: React.FC<LensCarouselProps> = ({
   // Re-center active lens whenever activeLens or containerWidth changes
   useEffect(() => {
     const index = lenses.findIndex((l) => l.id === activeLens.id);
-    if (index !== -1) {
+    if (index !== -1 && lastIndexRef.current !== index) {
       lastIndexRef.current = index;
       if (!isUserDraggingRef.current) {
-        const timer = setTimeout(() => {
-          scrollToLensIndex(index, true);
-        }, 16);
-        return () => clearTimeout(timer);
+        scrollToLensIndex(index, true);
       }
     }
   }, [activeLens.id, containerWidth, lenses, scrollToLensIndex]);
@@ -127,7 +126,6 @@ export const LensCarousel: React.FC<LensCarouselProps> = ({
 
   const handleScroll = useCallback(
     (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-      if (!isUserDraggingRef.current) return;
       const offsetX = e.nativeEvent.contentOffset.x;
       const centerIdx = Math.max(
         0,
@@ -210,8 +208,9 @@ export const LensCarousel: React.FC<LensCarouselProps> = ({
         </View>
       )}
 
-      {/* SLEEK FROSTED GLASS CAROUSEL TRACK (matching user screenshot media_1790399392414.png) */}
+      {/* SLEEK FROSTED GLASS CAROUSEL TRACK */}
       <View style={styles.glassCarouselTrack}>
+        {/* FREE SNAP HORIZONTAL FLATLIST */}
         <FlatList
           ref={flatListRef}
           data={lenses}
@@ -219,9 +218,13 @@ export const LensCarousel: React.FC<LensCarouselProps> = ({
           renderItem={renderItem}
           horizontal
           showsHorizontalScrollIndicator={false}
-          ListHeaderComponent={<View style={{ width: sideSpacerWidth }} />}
-          ListFooterComponent={<View style={{ width: sideSpacerWidth }} />}
-          contentContainerStyle={styles.flatListContent}
+          contentContainerStyle={[
+            styles.flatListContent,
+            {
+              paddingLeft: sideSpacerWidth,
+              paddingRight: sideSpacerWidth,
+            },
+          ]}
           snapToInterval={LENS_ITEM_WIDTH}
           decelerationRate="fast"
           scrollEventThrottle={16}
@@ -235,12 +238,12 @@ export const LensCarousel: React.FC<LensCarouselProps> = ({
             index,
           })}
           onScrollToIndexFailed={() => {}}
-          initialNumToRender={9}
-          maxToRenderPerBatch={9}
-          windowSize={7}
+          initialNumToRender={11}
+          maxToRenderPerBatch={11}
+          windowSize={9}
         />
 
-        {/* GLOWING NEON SHUTTER TARGET RING AROUND ACTIVE CENTER AVATAR */}
+        {/* FIXED SINGLE CENTER BIG SHUTTER RING (Positioned in exact center) */}
         <View style={styles.centerTargetRingOverlay} pointerEvents="none">
           <Animated.View
             style={[
@@ -369,17 +372,18 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 0,
     bottom: 0,
-    left: 0,
-    right: 0,
-    justifyContent: 'flex-start',
+    left: '50%',
+    marginLeft: -SHUTTER_RING_SIZE / 2,
+    width: SHUTTER_RING_SIZE,
+    height: SHUTTER_RING_SIZE,
+    justifyContent: 'center',
     alignItems: 'center',
-    paddingTop: 1,
   },
   neonShutterRing: {
-    width: 78,
-    height: 78,
-    borderRadius: 39,
-    borderWidth: 3.5,
+    width: SHUTTER_RING_SIZE,
+    height: SHUTTER_RING_SIZE,
+    borderRadius: SHUTTER_RING_SIZE / 2,
+    borderWidth: 4,
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.85,
     shadowRadius: 14,

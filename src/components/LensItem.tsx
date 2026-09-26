@@ -1,10 +1,10 @@
-import React, { useEffect, useRef } from 'react';
-import { StyleSheet, TouchableOpacity, Animated, View, Text } from 'react-native';
+import React from 'react';
+import { StyleSheet, TouchableOpacity, View, Text } from 'react-native';
 import { Lens } from '../types/lens';
 import { triggerShutterPressHaptic } from '../utils/haptics';
 import { LensAvatar } from './LensAvatar';
 
-export const LENS_ITEM_WIDTH = 78;
+export const LENS_ITEM_WIDTH = 76;
 
 interface LensItemProps {
   lens: Lens;
@@ -24,23 +24,6 @@ export const LensItem: React.FC<LensItemProps> = React.memo(
     onSelect,
     onRecordPress,
   }) => {
-    const targetScale = isSelected
-      ? 1
-      : distanceFromCenter === 1
-      ? 0.88
-      : 0.78;
-
-    const scaleAnim = useRef(new Animated.Value(targetScale)).current;
-
-    useEffect(() => {
-      Animated.spring(scaleAnim, {
-        toValue: targetScale,
-        tension: 200,
-        friction: 15,
-        useNativeDriver: true,
-      }).start();
-    }, [targetScale, scaleAnim]);
-
     const handlePress = () => {
       if (isSelected) {
         triggerShutterPressHaptic();
@@ -50,14 +33,14 @@ export const LensItem: React.FC<LensItemProps> = React.memo(
       }
     };
 
-    const avatarSize = isSelected ? 66 : 52;
+    // Uniform avatar size so items slide seamlessly through the center ring without jumpy resizing
+    const avatarSize = 58;
 
     return (
-      <Animated.View
+      <View
         style={[
           styles.container,
           {
-            transform: [{ scale: scaleAnim }],
             opacity: isRecording && !isSelected ? 0.15 : 1,
           },
         ]}
@@ -65,11 +48,10 @@ export const LensItem: React.FC<LensItemProps> = React.memo(
         <TouchableOpacity
           style={[
             styles.avatarBadge,
-            isSelected ? styles.badgeSelected : styles.badgeSide,
             isSelected && isRecording && styles.badgeRecordingRed,
           ]}
           onPress={handlePress}
-          activeOpacity={0.85}
+          activeOpacity={0.82}
           accessibilityLabel={
             isSelected
               ? isRecording
@@ -103,7 +85,7 @@ export const LensItem: React.FC<LensItemProps> = React.memo(
         >
           {lens.id === 'normal' ? 'Natural' : lens.name}
         </Text>
-      </Animated.View>
+      </View>
     );
   }
 );
@@ -118,43 +100,32 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
   },
   avatarBadge: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     justifyContent: 'center',
     alignItems: 'center',
-    borderRadius: 40,
     overflow: 'hidden',
-  },
-  badgeSelected: {
-    width: 68,
-    height: 68,
-    borderRadius: 34,
-    borderWidth: 2,
-    borderColor: '#ffffff',
-    backgroundColor: '#09090b',
-  },
-  badgeSide: {
-    width: 54,
-    height: 54,
-    borderRadius: 27,
     borderWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.4)',
+    borderColor: 'rgba(255, 255, 255, 0.35)',
     backgroundColor: '#09090b',
   },
   badgeRecordingRed: {
     backgroundColor: '#ef4444',
-    borderWidth: 2.5,
     borderColor: '#ffffff',
+    borderWidth: 2.5,
   },
   recordingCenterView: {
-    width: 66,
-    height: 66,
-    borderRadius: 33,
+    width: 58,
+    height: 58,
+    borderRadius: 29,
     backgroundColor: '#ef4444',
     justifyContent: 'center',
     alignItems: 'center',
   },
   stopWhiteSquare: {
-    width: 22,
-    height: 22,
+    width: 20,
+    height: 20,
     borderRadius: 5,
     backgroundColor: '#ffffff',
   },
@@ -168,9 +139,9 @@ const styles = StyleSheet.create({
   },
   lensNameLabelSelected: {
     color: '#ffffff',
-    fontSize: 12.5,
+    fontSize: 12,
     fontWeight: '800',
-    textShadowColor: 'rgba(0, 0, 0, 0.8)',
+    textShadowColor: 'rgba(0, 0, 0, 0.85)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 3,
   },
