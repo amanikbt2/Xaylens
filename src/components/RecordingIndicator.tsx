@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Animated } from 'react-native';
+import { View, Text, StyleSheet, Animated, Platform } from 'react-native';
 import { Colors } from '../constants/colors';
 
 interface RecordingIndicatorProps {
@@ -15,12 +15,12 @@ export const RecordingIndicator: React.FC<RecordingIndicatorProps> = ({ formatte
         Animated.timing(blinkAnim, {
           toValue: 0.2,
           duration: 400,
-          useNativeDriver: true,
+          useNativeDriver: Platform.OS !== 'web',
         }),
         Animated.timing(blinkAnim, {
           toValue: 1,
           duration: 400,
-          useNativeDriver: true,
+          useNativeDriver: Platform.OS !== 'web',
         }),
       ])
     );

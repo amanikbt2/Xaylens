@@ -9,6 +9,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { Lens } from '../types/lens';
 import { Colors } from '../constants/colors';
+import { createShadow } from '../utils/styles';
 
 interface LensSquareCardProps {
   lens: Lens;

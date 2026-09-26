@@ -632,14 +632,13 @@ export const MediaPreviewModal: React.FC<MediaPreviewModalProps> = ({
               <View
                 style={[
                   StyleSheet.absoluteFill,
-                  { backgroundColor: activeFilterObj.overlayColor },
+                  { backgroundColor: activeFilterObj.overlayColor, pointerEvents: 'none' },
                 ]}
-                pointerEvents="none"
               />
             )}
 
             {/* DRAGGABLE TEXT CAPTIONS ON VIDEO */}
-            <View style={styles.captionsStage} pointerEvents="box-none">
+            <View style={[styles.captionsStage, { pointerEvents: 'box-none' }]}>
               {captions.map((cap) => (
                 <DraggableCaptionItem
                   key={cap.id}

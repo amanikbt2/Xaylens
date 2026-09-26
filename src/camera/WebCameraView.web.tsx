@@ -440,7 +440,7 @@ export const PlatformCameraView = forwardRef<CameraViewRef, CameraViewProps>(
 
         {/* Front flash screen illumination */}
         {flash === 'on' && (
-          <View style={styles.frontFlashOverlay} pointerEvents="none" />
+          <View style={[styles.frontFlashOverlay, { pointerEvents: 'none' }]} />
         )}
 
         {/* Permission or hardware error fallback */}

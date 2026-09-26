@@ -73,11 +73,8 @@ export const LensCarousel: React.FC<LensCarouselProps> = ({
   const sideSpacerWidth = Math.max(0, (containerWidth - LENS_ITEM_WIDTH) / 2);
 
   const isUserDraggingRef = useRef(false);
-  const activeIndex = Math.max(
-    0,
-    lenses.findIndex((l) => l.id === activeLens.id)
-  );
-  const lastIndexRef = useRef(activeIndex);
+  const currentScrollOffsetRef = useRef(0);
+  const lastHapticIndexRef = useRef(-1);
 
   // Append Explore Lenses launcher circle to carousel data
   const carouselData = useMemo(() => {
@@ -103,16 +100,14 @@ export const LensCarousel: React.FC<LensCarouselProps> = ({
     [carouselData.length]
   );
 
-  // Re-center active lens whenever activeLens or containerWidth changes
+  // Re-center active lens whenever activeLens or containerWidth changes (if user is not dragging)
   useEffect(() => {
-    const index = lenses.findIndex((l) => l.id === activeLens.id);
-    if (index !== -1 && lastIndexRef.current !== index) {
-      lastIndexRef.current = index;
-      if (!isUserDraggingRef.current) {
-        scrollToLensIndex(index, true);
-      }
+    if (isUserDraggingRef.current) return;
+    const index = carouselData.findIndex((l) => l.id === activeLens.id);
+    if (index !== -1) {
+      scrollToLensIndex(index, true);
     }
-  }, [activeLens.id, containerWidth, lenses, scrollToLensIndex]);
+  }, [activeLens.id, carouselData, scrollToLensIndex]);
 
   const handleLayout = useCallback((e: LayoutChangeEvent) => {
     const width = e.nativeEvent.layout.width;
@@ -121,46 +116,42 @@ export const LensCarousel: React.FC<LensCarouselProps> = ({
     }
   }, []);
 
-  const handleScroll = useCallback(
-    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-      const offsetX = e.nativeEvent.contentOffset.x;
-      const centerIdx = Math.max(
-        0,
-        Math.min(carouselData.length - 1, Math.round(offsetX / LENS_ITEM_WIDTH))
-      );
-      const targetItem = carouselData[centerIdx];
-      if (centerIdx !== lastIndexRef.current && targetItem) {
-        lastIndexRef.current = centerIdx;
-        if (targetItem.id === 'explore-more') {
-          if (onOpenExplore) {
-            triggerLensSelectHaptic();
-            onOpenExplore();
-          }
-        } else {
-          triggerLensSelectHaptic();
-          onSelectLens(targetItem);
-        }
-      }
-    },
-    [carouselData, onOpenExplore, onSelectLens]
-  );
-
   const handleScrollBeginDrag = useCallback(() => {
     isUserDraggingRef.current = true;
   }, []);
 
-  const handleScrollEnd = useCallback(
+  // Track scroll position and fire gentle haptics as user glides through lenses
+  const handleScroll = useCallback(
     (e: NativeSyntheticEvent<NativeScrollEvent>) => {
       const offsetX = e.nativeEvent.contentOffset.x;
+      currentScrollOffsetRef.current = offsetX;
       const centerIdx = Math.max(
         0,
         Math.min(carouselData.length - 1, Math.round(offsetX / LENS_ITEM_WIDTH))
       );
-      isUserDraggingRef.current = false;
+      if (centerIdx !== lastHapticIndexRef.current) {
+        lastHapticIndexRef.current = centerIdx;
+        triggerLensSelectHaptic();
+      }
+    },
+    [carouselData.length]
+  );
+
+  // When swipe scroll ends and settles on a lens
+  const handleScrollEnd = useCallback(
+    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+      const offsetX = e.nativeEvent.contentOffset.x;
+      currentScrollOffsetRef.current = offsetX;
+      const centerIdx = Math.max(
+        0,
+        Math.min(carouselData.length - 1, Math.round(offsetX / LENS_ITEM_WIDTH))
+      );
+
+      // Snap cleanly to the exact interval
       scrollToLensIndex(centerIdx, true);
+
       const targetItem = carouselData[centerIdx];
       if (targetItem) {
-        lastIndexRef.current = centerIdx;
         if (targetItem.id === 'explore-more') {
           if (onOpenExplore) {
             triggerLensSelectHaptic();
@@ -171,10 +162,15 @@ export const LensCarousel: React.FC<LensCarouselProps> = ({
           onSelectLens(targetItem);
         }
       }
+
+      setTimeout(() => {
+        isUserDraggingRef.current = false;
+      }, 50);
     },
     [activeLens.id, carouselData, onOpenExplore, onSelectLens, scrollToLensIndex]
   );
 
+  // Tapping any flanking lens scrolls it smoothly to the center and selects it
   const handleTapLens = useCallback(
     (item: Lens) => {
       if (item.id === 'explore-more') {
@@ -187,7 +183,6 @@ export const LensCarousel: React.FC<LensCarouselProps> = ({
       isUserDraggingRef.current = false;
       const idx = carouselData.findIndex((l) => l.id === item.id);
       if (idx !== -1) {
-        lastIndexRef.current = idx;
         triggerLensSelectHaptic();
         scrollToLensIndex(idx, true);
         onSelectLens(item);
@@ -203,8 +198,24 @@ export const LensCarousel: React.FC<LensCarouselProps> = ({
     }
   }, [hasMore, isFetchingMore, onFetchMore]);
 
+  // Quick navigation arrows (useful on Desktop web / preview)
+  const handleNavPrev = () => {
+    const currentIndex = carouselData.findIndex((l) => l.id === activeLens.id);
+    if (currentIndex > 0) {
+      handleTapLens(carouselData[currentIndex - 1]);
+    }
+  };
+
+  const handleNavNext = () => {
+    const currentIndex = carouselData.findIndex((l) => l.id === activeLens.id);
+    if (currentIndex < carouselData.length - 1) {
+      handleTapLens(carouselData[currentIndex + 1]);
+    }
+  };
+
   const renderItem = ({ item, index }: { item: Lens; index: number }) => {
     const isSelected = item.id === activeLens.id;
+    const activeIndex = carouselData.findIndex((l) => l.id === activeLens.id);
     const distanceFromCenter = Math.abs(index - activeIndex);
     return (
       <LensItem
@@ -237,8 +248,20 @@ export const LensCarousel: React.FC<LensCarouselProps> = ({
         </View>
       )}
 
-      {/* SLEEK FROSTED GLASS CAROUSEL TRACK (matching user screenshot) */}
+      {/* SLEEK FROSTED GLASS CAROUSEL TRACK */}
       <View style={styles.glassCarouselTrack}>
+        {/* Subtle Web / Desktop Left Arrow */}
+        {Platform.OS === 'web' && (
+          <TouchableOpacity
+            style={[styles.webArrowBtn, styles.webArrowLeft]}
+            onPress={handleNavPrev}
+            hitSlop={8}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="chevron-back" size={18} color="rgba(255,255,255,0.7)" />
+          </TouchableOpacity>
+        )}
+
         <FlatList
           ref={flatListRef}
           data={carouselData}
@@ -254,24 +277,38 @@ export const LensCarousel: React.FC<LensCarouselProps> = ({
             },
           ]}
           snapToInterval={LENS_ITEM_WIDTH}
+          snapToAlignment="center"
           decelerationRate="fast"
+          disableIntervalMomentum={false}
           scrollEventThrottle={16}
           onScrollBeginDrag={handleScrollBeginDrag}
           onScroll={handleScroll}
           onMomentumScrollEnd={handleScrollEnd}
           onScrollEndDrag={handleScrollEnd}
           onEndReached={handleEndReached}
-          onEndReachedThreshold={0.4}
+          onEndReachedThreshold={0.5}
           getItemLayout={(_, index) => ({
             length: LENS_ITEM_WIDTH,
             offset: LENS_ITEM_WIDTH * index,
             index,
           })}
           onScrollToIndexFailed={() => {}}
-          initialNumToRender={14}
+          initialNumToRender={15}
           maxToRenderPerBatch={12}
           windowSize={11}
         />
+
+        {/* Subtle Web / Desktop Right Arrow */}
+        {Platform.OS === 'web' && (
+          <TouchableOpacity
+            style={[styles.webArrowBtn, styles.webArrowRight]}
+            onPress={handleNavNext}
+            hitSlop={8}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="chevron-forward" size={18} color="rgba(255,255,255,0.7)" />
+          </TouchableOpacity>
+        )}
       </View>
 
       {/* LOWER BAR: Bookmark & Explore Buttons neatly organized BELOW the carousel */}
@@ -401,6 +438,25 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderBottomWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  webArrowBtn: {
+    position: 'absolute',
+    zIndex: 10,
+    top: 38,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: 'rgba(0, 0, 0, 0.55)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  webArrowLeft: {
+    left: 8,
+  },
+  webArrowRight: {
+    right: 8,
   },
   flatListContent: {
     alignItems: 'center',

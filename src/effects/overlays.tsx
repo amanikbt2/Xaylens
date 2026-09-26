@@ -41,7 +41,7 @@ export const PuppyOverlay: React.FC<OverlayProps> = ({
   const earWiggleRight = Math.cos(animationTick * 0.08) * 4;
 
   return (
-    <View style={StyleSheet.absoluteFill} pointerEvents="none">
+    <View style={[StyleSheet.absoluteFill, { pointerEvents: 'none' }]}>
       <Svg width={canvasWidth} height={canvasHeight} style={StyleSheet.absoluteFill}>
         <Defs>
           <LinearGradient id="puppyEarGrad" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -140,7 +140,7 @@ export const BunnyOverlay: React.FC<OverlayProps> = ({
   const twitchR = Math.sin((animationTick + 2) * 0.12) * 3;
 
   return (
-    <View style={StyleSheet.absoluteFill} pointerEvents="none">
+    <View style={[StyleSheet.absoluteFill, { pointerEvents: 'none' }]}>
       <Svg width={canvasWidth} height={canvasHeight} style={StyleSheet.absoluteFill}>
         <Defs>
           <LinearGradient id="bunnyWhite" x1="0%" y1="0%" x2="0%" y2="100%">
@@ -246,7 +246,7 @@ export const FunnyGlassesOverlay: React.FC<OverlayProps> = ({
   const angle = Math.atan2(eyeRightY - eyeLeftY, eyeRightX - eyeLeftX) * (180 / Math.PI);
 
   return (
-    <View style={StyleSheet.absoluteFill} pointerEvents="none">
+    <View style={[StyleSheet.absoluteFill, { pointerEvents: 'none' }]}>
       <Svg width={canvasWidth} height={canvasHeight} style={StyleSheet.absoluteFill}>
         <Defs>
           <LinearGradient id="neonLensGrad" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -348,7 +348,7 @@ export const AlienOverlay: React.FC<OverlayProps> = ({
   const orbRadius = 14 + Math.sin(animationTick * 0.15) * 3;
 
   return (
-    <View style={StyleSheet.absoluteFill} pointerEvents="none">
+    <View style={[StyleSheet.absoluteFill, { pointerEvents: 'none' }]}>
       <Svg width={canvasWidth} height={canvasHeight} style={StyleSheet.absoluteFill}>
         <Defs>
           <RadialGradient id="alienGlow" cx="50%" cy="50%" r="50%">

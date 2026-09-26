@@ -7,6 +7,7 @@ import {
   ActivityIndicator,
   Platform,
   PanResponder,
+  Dimensions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -122,10 +123,15 @@ export const CameraScreen: React.FC = () => {
   const panResponder = useMemo(
     () =>
       PanResponder.create({
-        onMoveShouldSetPanResponder: (_, gestureState) => {
+        onMoveShouldSetPanResponder: (evt, gestureState) => {
+          // Never intercept gestures in the bottom carousel track area (bottom 250px)
+          const screenHeight = Dimensions.get('window').height;
+          if (evt.nativeEvent.pageY > screenHeight - 250) {
+            return false;
+          }
           return (
-            Math.abs(gestureState.dx) > 28 &&
-            Math.abs(gestureState.dx) > Math.abs(gestureState.dy) * 1.4
+            Math.abs(gestureState.dx) > 35 &&
+            Math.abs(gestureState.dx) > Math.abs(gestureState.dy) * 1.5
           );
         },
         onPanResponderRelease: (_, gestureState) => {
@@ -188,24 +194,28 @@ export const CameraScreen: React.FC = () => {
     <View style={styles.root}>
       {/* Centered container for desktop web responsiveness */}
       <View style={styles.desktopWrapper}>
-        <View style={styles.cameraContainer} {...panResponder.panHandlers}>
-          {/* Full-Screen Pure Camera Viewport (Always Video Mode) */}
-          <PlatformCamera
-            ref={cameraRef}
-            facing={facing}
-            flash={flash}
-            mode="video"
-            activeLens={activeLens}
-            isRecording={isRecording}
-            onCameraReady={handleCameraReady}
-            onMountError={handleCameraError}
-            style={StyleSheet.absoluteFill}
-          />
+        <View style={styles.cameraContainer}>
+          {/* Full-Screen Pure Camera Viewport with gesture swipe */}
+          <View style={StyleSheet.absoluteFill} {...panResponder.panHandlers}>
+            <PlatformCamera
+              ref={cameraRef}
+              facing={facing}
+              flash={flash}
+              mode="video"
+              activeLens={activeLens}
+              isRecording={isRecording}
+              onCameraReady={handleCameraReady}
+              onMountError={handleCameraError}
+              style={StyleSheet.absoluteFill}
+            />
+          </View>
 
           {/* TOP MINIMAL FLOATING CONTROLS (Snapchat Style) */}
           <View
-            style={[styles.topControlsWrapper, { paddingTop: insets.top || 14 }]}
-            pointerEvents="box-none"
+            style={[
+              styles.topControlsWrapper,
+              { paddingTop: insets.top || 14, pointerEvents: 'box-none' },
+            ]}
           >
             <CameraControls
               flash={flash}
@@ -240,9 +250,8 @@ export const CameraScreen: React.FC = () => {
           <View
             style={[
               styles.bottomControlsWrapper,
-              { paddingBottom: Math.max(insets.bottom, 20) },
+              { paddingBottom: Math.max(insets.bottom, 20), pointerEvents: 'box-none' },
             ]}
-            pointerEvents="box-none"
           >
             <LensCarousel
               lenses={lenses}

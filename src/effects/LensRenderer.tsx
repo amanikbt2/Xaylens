@@ -99,8 +99,7 @@ export const LensRenderer: React.FC<LensRendererProps> = React.memo(
 
     return (
       <View
-        style={[StyleSheet.absoluteFill, { width, height }]}
-        pointerEvents="none"
+        style={[StyleSheet.absoluteFill, { width, height, pointerEvents: 'none' }]}
       >
         {/* NATIVE 3D SCULPTED BIG NOSE PROSTHETIC (No wireframes or dashed lines) */}
         {!isWeb && lens.id === 'big-nose' && (

@@ -1,5 +1,5 @@
-import React from 'react';
-import { StyleSheet, TouchableOpacity, View, Text } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { StyleSheet, TouchableOpacity, View, Text, Animated } from 'react-native';
 import { Lens } from '../types/lens';
 import { triggerShutterPressHaptic } from '../utils/haptics';
 import { LensAvatar } from './LensAvatar';
@@ -23,6 +23,17 @@ export const LensItem: React.FC<LensItemProps> = React.memo(
     onSelect,
     onRecordPress,
   }) => {
+    const scaleAnim = useRef(new Animated.Value(isSelected ? 1 : 0.84)).current;
+
+    useEffect(() => {
+      Animated.spring(scaleAnim, {
+        toValue: isSelected ? 1 : 0.84,
+        useNativeDriver: true,
+        tension: 220,
+        friction: 14,
+      }).start();
+    }, [isSelected, scaleAnim]);
+
     const handlePress = () => {
       if (lens.id === 'explore-more') {
         onSelect(lens);
@@ -37,10 +48,11 @@ export const LensItem: React.FC<LensItemProps> = React.memo(
     };
 
     return (
-      <View
+      <Animated.View
         style={[
           styles.container,
           {
+            transform: [{ scale: scaleAnim }],
             opacity: isRecording && !isSelected ? 0.15 : 1,
           },
         ]}
@@ -54,15 +66,15 @@ export const LensItem: React.FC<LensItemProps> = React.memo(
               ? 'Explore all lenses'
               : isSelected
               ? isRecording
-                ? 'Stop recording and edit video'
+                ? 'Stop recording video'
                 : `Start recording with ${lens.name}`
               : `Select ${lens.name} lens`
           }
           accessibilityRole="button"
           accessibilityState={{ selected: isSelected }}
         >
-          {/* THE BIG CIRCLE: Present on the active lens, exactly matching media_1790400374579.png */}
           {isSelected ? (
+            /* ACTIVE LENS: Large glowing cyan double ring focus circle (matching user's screenshot) */
             <View
               style={[
                 styles.bigShutterRing,
@@ -80,15 +92,14 @@ export const LensItem: React.FC<LensItemProps> = React.memo(
               )}
             </View>
           ) : (
-            /* Flanking Non-Selected Items: Clean circular avatars */
+            /* SIDE LENSES: Distinctly smaller clean circular icons */
             <View style={styles.sideAvatarWrapper}>
               <View style={styles.sideAvatarRing}>
-                <LensAvatar lensId={lens.id} size={50} isSelected={false} />
+                <LensAvatar lensId={lens.id} size={42} isSelected={false} />
               </View>
             </View>
           )}
 
-          {/* Clean, legible text name directly under each circle */}
           <Text
             style={[
               styles.lensNameLabel,
@@ -99,7 +110,7 @@ export const LensItem: React.FC<LensItemProps> = React.memo(
             {lens.name.replace(/^\d+\.\s*/, '')}
           </Text>
         </TouchableOpacity>
-      </View>
+      </Animated.View>
     );
   }
 );
@@ -117,19 +128,19 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-start',
     width: '100%',
   },
-  /* The Big Glowing Neon Circle around the active lens (matching user screenshot media_1790400374579.png) */
+  /* Large Glowing Double-Ring Circle for active lens (matching user image) */
   bigShutterRing: {
     width: 76,
     height: 76,
     borderRadius: 38,
     borderWidth: 3.5,
-    borderColor: '#22d3ee',
-    backgroundColor: 'rgba(6, 182, 212, 0.12)',
+    borderColor: '#00d2ff',
+    backgroundColor: 'rgba(0, 210, 255, 0.12)',
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#06b6d4',
+    shadowColor: '#00d2ff',
     shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.9,
+    shadowOpacity: 0.95,
     shadowRadius: 14,
     elevation: 8,
   },
@@ -146,7 +157,7 @@ const styles = StyleSheet.create({
     borderRadius: 29,
     overflow: 'hidden',
     borderWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.8)',
+    borderColor: '#ffffff',
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#09090b',
@@ -165,7 +176,7 @@ const styles = StyleSheet.create({
     borderRadius: 5,
     backgroundColor: '#ffffff',
   },
-  /* Side items container: 76px tall to keep avatar centers at the exact same vertical height */
+  /* Side items container: 76px tall to keep all avatar centers vertically aligned */
   sideAvatarWrapper: {
     width: 76,
     height: 76,
@@ -173,27 +184,27 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   sideAvatarRing: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     borderWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.42)',
+    borderColor: 'rgba(255, 255, 255, 0.55)',
     overflow: 'hidden',
     backgroundColor: '#09090b',
     justifyContent: 'center',
     alignItems: 'center',
   },
   lensNameLabel: {
-    color: 'rgba(255, 255, 255, 0.7)',
-    fontSize: 11,
+    color: 'rgba(255, 255, 255, 0.65)',
+    fontSize: 10.5,
     fontWeight: '600',
-    marginTop: 6,
+    marginTop: 5,
     textAlign: 'center',
-    maxWidth: 72,
+    maxWidth: 68,
   },
   lensNameLabelSelected: {
     color: '#ffffff',
-    fontSize: 12.5,
+    fontSize: 12,
     fontWeight: '800',
     textShadowColor: 'rgba(0, 0, 0, 0.9)',
     textShadowOffset: { width: 0, height: 1 },

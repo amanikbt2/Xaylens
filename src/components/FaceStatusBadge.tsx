@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Animated } from 'react-native';
+import { View, Text, StyleSheet, Animated, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { FaceStatus } from '../hooks/useFaceStatus';
 import { Colors } from '../constants/colors';
@@ -19,12 +19,12 @@ export const FaceStatusBadge: React.FC<FaceStatusBadgeProps> = ({ status }) => {
           Animated.timing(pulseAnim, {
             toValue: 0.35,
             duration: 500,
-            useNativeDriver: true,
+            useNativeDriver: Platform.OS !== 'web',
           }),
           Animated.timing(pulseAnim, {
             toValue: 1,
             duration: 500,
-            useNativeDriver: true,
+            useNativeDriver: Platform.OS !== 'web',
           }),
         ])
       );
