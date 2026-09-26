@@ -14,6 +14,7 @@ import { PlatformCamera } from '../camera/PlatformCamera';
 import { CameraViewRef } from '../camera/cameraTypes';
 import { CameraControls } from '../components/CameraControls';
 import { LensCarousel } from '../components/LensCarousel';
+import { ExploreLensesDrawer } from '../components/ExploreLensesDrawer';
 import { RecordingIndicator } from '../components/RecordingIndicator';
 import { PermissionView } from '../components/PermissionView';
 import { CameraErrorView } from '../components/CameraErrorView';
@@ -41,11 +42,20 @@ export const CameraScreen: React.FC = () => {
     handleCameraError,
   } = useCamera();
 
-  const { lenses, activeLens, selectLens, lensNotice } = useLens('normal');
+  const {
+    lenses,
+    activeLens,
+    selectLens,
+    lensNotice,
+    favoriteIds,
+    toggleFavorite,
+    isFavorite,
+  } = useLens('normal');
 
   const [previewMedia, setPreviewMedia] = useState<CapturedMedia | null>(null);
   const [isPreviewVisible, setIsPreviewVisible] = useState(false);
   const [isSettingsVisible, setIsSettingsVisible] = useState(false);
+  const [isExploreVisible, setIsExploreVisible] = useState(false);
 
   // Video Recording Hook
   const handleMaxDuration = useCallback(async () => {
@@ -135,7 +145,7 @@ export const CameraScreen: React.FC = () => {
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={Colors.white} />
+        <ActivityIndicator size="large" color={Colors.textPrimary} />
         <Text style={styles.loadingText}>Initializing XayLens...</Text>
       </View>
     );
@@ -226,7 +236,11 @@ export const CameraScreen: React.FC = () => {
               lenses={lenses}
               activeLens={activeLens}
               isRecording={isRecording}
+              formattedTime={formattedTime}
+              isFavorite={isFavorite(activeLens.id)}
               onSelectLens={(lens) => selectLens(lens, facing)}
+              onToggleFavorite={() => toggleFavorite(activeLens.id)}
+              onOpenExplore={() => setIsExploreVisible(true)}
               onRecordPress={handleRecordPress}
               onHoldStart={handleStartVideo}
               onHoldEnd={handleStopVideo}
@@ -263,9 +277,21 @@ export const CameraScreen: React.FC = () => {
         visible={isSettingsVisible}
         onClose={() => setIsSettingsVisible(false)}
       />
+
+      {/* Explore Lenses Bottom Drawer */}
+      <ExploreLensesDrawer
+        visible={isExploreVisible}
+        lenses={lenses}
+        activeLens={activeLens}
+        favoriteIds={favoriteIds}
+        onSelectLens={(lens) => selectLens(lens, facing)}
+        onToggleFavorite={toggleFavorite}
+        onClose={() => setIsExploreVisible(false)}
+      />
     </View>
   );
 };
+
 
 const styles = StyleSheet.create({
   root: {
@@ -289,12 +315,12 @@ const styles = StyleSheet.create({
   },
   loadingContainer: {
     flex: 1,
-    backgroundColor: '#09090b',
+    backgroundColor: '#f4f4f5',
     justifyContent: 'center',
     alignItems: 'center',
   },
   loadingText: {
-    color: Colors.white,
+    color: Colors.textPrimary,
     marginTop: 16,
     fontSize: 15,
     fontWeight: '600',

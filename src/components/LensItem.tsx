@@ -5,7 +5,7 @@ import { Lens } from '../types/lens';
 import { Colors } from '../constants/colors';
 import { triggerShutterPressHaptic } from '../utils/haptics';
 
-export const LENS_ITEM_WIDTH = 84;
+export const LENS_ITEM_WIDTH = 86;
 
 interface LensItemProps {
   lens: Lens;
@@ -14,124 +14,101 @@ interface LensItemProps {
   distanceFromCenter: number;
   onSelect: (lens: Lens) => void;
   onRecordPress: () => void;
-  onHoldStart?: () => void;
-  onHoldEnd?: () => void;
 }
 
-export const LensItem: React.FC<LensItemProps> = React.memo(({
-  lens,
-  isSelected,
-  isRecording,
-  distanceFromCenter,
-  onSelect,
-  onRecordPress,
-  onHoldStart,
-  onHoldEnd,
-}) => {
-  const targetScale = isSelected
-    ? 1
-    : distanceFromCenter === 1
-    ? 0.88
-    : 0.76;
+export const LensItem: React.FC<LensItemProps> = React.memo(
+  ({
+    lens,
+    isSelected,
+    isRecording,
+    distanceFromCenter,
+    onSelect,
+    onRecordPress,
+  }) => {
+    const targetScale = isSelected
+      ? 1
+      : distanceFromCenter === 1
+      ? 0.84
+      : 0.72;
 
-  const scaleAnim = useRef(new Animated.Value(targetScale)).current;
-  const isHoldingRef = useRef(false);
+    const scaleAnim = useRef(new Animated.Value(targetScale)).current;
 
-  useEffect(() => {
-    Animated.spring(scaleAnim, {
-      toValue: targetScale,
-      tension: 190,
-      friction: 14,
-      useNativeDriver: true,
-    }).start();
-  }, [targetScale, scaleAnim]);
+    useEffect(() => {
+      Animated.spring(scaleAnim, {
+        toValue: targetScale,
+        tension: 200,
+        friction: 15,
+        useNativeDriver: true,
+      }).start();
+    }, [targetScale, scaleAnim]);
 
-  const handlePress = () => {
-    if (isHoldingRef.current) {
-      isHoldingRef.current = false;
-      return;
-    }
-    if (isSelected) {
-      triggerShutterPressHaptic();
-      onRecordPress();
-    } else {
-      onSelect(lens);
-    }
-  };
-
-  const handleLongPress = () => {
-    if (isSelected && !isRecording && onHoldStart) {
-      isHoldingRef.current = true;
-      triggerShutterPressHaptic();
-      onHoldStart();
-    }
-  };
-
-  const handlePressOut = () => {
-    if (isHoldingRef.current) {
-      isHoldingRef.current = false;
-      if (onHoldEnd) {
-        onHoldEnd();
+    const handlePress = () => {
+      if (isSelected) {
+        triggerShutterPressHaptic();
+        onRecordPress();
+      } else {
+        onSelect(lens);
       }
-    }
-  };
+    };
 
-  const isNatural = lens.id === 'normal';
-
-  return (
-    <Animated.View
-      style={[
-        styles.container,
-        {
-          transform: [{ scale: scaleAnim }],
-          opacity: isRecording && !isSelected ? 0.22 : 1,
-        },
-      ]}
-    >
-      <TouchableOpacity
+    return (
+      <Animated.View
         style={[
-          styles.circle,
-          isSelected ? styles.circleCenter : styles.circleSide,
-          isSelected && !isNatural && !isRecording && {
-            backgroundColor: 'rgba(24, 24, 27, 0.78)',
-            borderColor: lens.accentColor,
-            borderWidth: 2,
+          styles.container,
+          {
+            transform: [{ scale: scaleAnim }],
+            opacity: isRecording && !isSelected ? 0.15 : 1,
           },
-          isSelected && isNatural && !isRecording && styles.circleNaturalCenter,
-          isSelected && isRecording && styles.circleRecordingCenter,
         ]}
-        onPress={handlePress}
-        onLongPress={handleLongPress}
-        onPressOut={handlePressOut}
-        delayLongPress={240}
-        activeOpacity={0.85}
-        accessibilityLabel={
-          isSelected
-            ? isRecording
-              ? 'Stop video recording'
-              : `Record video with ${lens.name}`
-            : `Switch to ${lens.name} lens`
-        }
-        accessibilityRole="button"
-        accessibilityState={{ selected: isSelected }}
       >
-        {isSelected && isRecording ? (
-          <View style={styles.stopSquare} />
-        ) : isSelected && isNatural ? (
-          <View style={styles.naturalRecordCore}>
-            <View style={styles.naturalRecordDot} />
-          </View>
-        ) : (
-          <Ionicons
-            name={lens.iconName as keyof typeof Ionicons.glyphMap}
-            size={isSelected ? 28 : 22}
-            color={isSelected ? lens.accentColor : Colors.white}
-          />
-        )}
-      </TouchableOpacity>
-    </Animated.View>
-  );
-});
+        <TouchableOpacity
+          style={[
+            styles.circle,
+            isSelected ? styles.circleInBigRing : styles.circleSide,
+            isSelected &&
+              !isRecording && {
+                backgroundColor:
+                  lens.id === 'normal'
+                    ? 'rgba(255, 255, 255, 0.22)'
+                    : 'rgba(20, 20, 26, 0.86)',
+                borderColor:
+                  lens.id === 'normal' ? '#ffffff' : lens.accentColor,
+                borderWidth: 2,
+              },
+            isSelected && isRecording && styles.circleRecordingRed,
+          ]}
+          onPress={handlePress}
+          activeOpacity={0.85}
+          accessibilityLabel={
+            isSelected
+              ? isRecording
+                ? 'Stop recording and edit video'
+                : `Start recording with ${lens.name}`
+              : `Select ${lens.name} lens`
+          }
+          accessibilityRole="button"
+          accessibilityState={{ selected: isSelected }}
+        >
+          {isSelected && isRecording ? (
+            <View style={styles.stopWhiteSquare} />
+          ) : (
+            <Ionicons
+              name={lens.iconName as keyof typeof Ionicons.glyphMap}
+              size={isSelected ? 30 : 22}
+              color={
+                isSelected
+                  ? lens.id === 'normal'
+                    ? '#ffffff'
+                    : lens.accentColor
+                  : Colors.white
+              }
+            />
+          )}
+        </TouchableOpacity>
+      </Animated.View>
+    );
+  }
+);
 
 LensItem.displayName = 'LensItem';
 
@@ -145,50 +122,33 @@ const styles = StyleSheet.create({
   circle: {
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.35,
-    shadowRadius: 6,
   },
-  circleCenter: {
-    width: 66,
-    height: 66,
-    borderRadius: 33,
+  circleInBigRing: {
+    width: 68,
+    height: 68,
+    borderRadius: 34,
   },
-  circleNaturalCenter: {
-    backgroundColor: 'rgba(255, 255, 255, 0.18)',
-    borderWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.45)',
-  },
-  circleRecordingCenter: {
-    backgroundColor: 'rgba(239, 68, 68, 0.22)',
+  circleRecordingRed: {
+    backgroundColor: '#ef4444',
+    borderWidth: 2,
+    borderColor: '#ffffff',
+    shadowColor: '#ef4444',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.9,
+    shadowRadius: 12,
   },
   circleSide: {
     width: 52,
     height: 52,
     borderRadius: 26,
-    backgroundColor: 'rgba(15, 15, 20, 0.62)',
+    backgroundColor: 'rgba(15, 15, 20, 0.68)',
     borderWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.28)',
+    borderColor: 'rgba(255, 255, 255, 0.26)',
   },
-  naturalRecordCore: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: 'rgba(239, 68, 68, 0.88)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  naturalRecordDot: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
+  stopWhiteSquare: {
+    width: 22,
+    height: 22,
+    borderRadius: 5,
     backgroundColor: '#ffffff',
-  },
-  stopSquare: {
-    width: 26,
-    height: 26,
-    borderRadius: 7,
-    backgroundColor: Colors.recordingRed,
   },
 });

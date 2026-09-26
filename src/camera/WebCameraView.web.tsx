@@ -342,22 +342,30 @@ export const PlatformCameraView = forwardRef<CameraViewRef, CameraViewProps>(
       },
 
       stopRecordingAsync: async (): Promise<CapturedMedia | null> => {
-        if (!mediaRecorderRef.current || !isRecordingRef.current) return null;
+        isRecordingRef.current = false;
+        const recorder = mediaRecorderRef.current;
+        if (!recorder) {
+          const canvas = glCanvasRef.current;
+          if (canvas) {
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
+            return {
+              id: `video_web_${Date.now()}`,
+              type: 'video',
+              uri: dataUrl,
+              timestamp: Date.now(),
+              lensId: activeLens.id,
+              lensName: activeLens.name,
+            };
+          }
+          return null;
+        }
 
         return new Promise((resolve) => {
-          const recorder = mediaRecorderRef.current;
-          if (!recorder) {
-            resolve(null);
-            return;
-          }
-
-          recorder.onstop = () => {
-            const blob = new Blob(recordedChunksRef.current, {
-              type: 'video/webm',
-            });
+          let hasResolved = false;
+          const finish = (blob: Blob) => {
+            if (hasResolved) return;
+            hasResolved = true;
             const videoUrl = URL.createObjectURL(blob);
-            isRecordingRef.current = false;
-
             resolve({
               id: `video_web_${Date.now()}`,
               type: 'video',
@@ -368,7 +376,36 @@ export const PlatformCameraView = forwardRef<CameraViewRef, CameraViewProps>(
             });
           };
 
-          recorder.stop();
+          const timeoutId = setTimeout(() => {
+            const blob = new Blob(recordedChunksRef.current, {
+              type: 'video/webm',
+            });
+            finish(blob);
+          }, 600);
+
+          recorder.onstop = () => {
+            clearTimeout(timeoutId);
+            const blob = new Blob(recordedChunksRef.current, {
+              type: 'video/webm',
+            });
+            finish(blob);
+          };
+
+          try {
+            if (recorder.state === 'recording') {
+              recorder.stop();
+            } else {
+              const blob = new Blob(recordedChunksRef.current, {
+                type: 'video/webm',
+              });
+              finish(blob);
+            }
+          } catch {
+            const blob = new Blob(recordedChunksRef.current, {
+              type: 'video/webm',
+            });
+            finish(blob);
+          }
         });
       },
     }));
