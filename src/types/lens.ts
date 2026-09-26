@@ -27,7 +27,7 @@ export interface FaceLandmarks {
 
 export interface DistortionConfig {
   type: 'bulge' | 'pinch' | 'stretch_h' | 'stretch_v' | 'complex_alien';
-  targetRegion: 'nose' | 'eyes' | 'face' | 'jaw' | 'forehead' | 'all';
+  targetRegion: 'nose' | 'eyes' | 'face' | 'jaw' | 'forehead' | 'mouth' | 'all';
   intensity: number; // 0 to 1
   radius: number; // normalized radius of effect
   center?: FaceLandmarkPoint;

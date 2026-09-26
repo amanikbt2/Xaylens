@@ -57,7 +57,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ visible, onClose
             onPress={onClose}
             activeOpacity={0.7}
           >
-            <Ionicons name="close" size={24} color={Colors.white} />
+            <Ionicons name="close" size={24} color={Colors.textPrimary} />
           </TouchableOpacity>
         </View>
 
@@ -136,7 +136,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ visible, onClose
               <Switch
                 value={preferences.mirrorFrontCamera}
                 onValueChange={(val) => updatePreference('mirrorFrontCamera', val)}
-                trackColor={{ false: '#27272a', true: Colors.accentCyan }}
+                trackColor={{ false: '#e4e4e7', true: Colors.accentCyan }}
                 thumbColor={Colors.white}
               />
             </View>
@@ -154,7 +154,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ visible, onClose
               <Switch
                 value={preferences.enableHaptics}
                 onValueChange={(val) => updatePreference('enableHaptics', val)}
-                trackColor={{ false: '#27272a', true: Colors.accentCyan }}
+                trackColor={{ false: '#e4e4e7', true: Colors.accentCyan }}
                 thumbColor={Colors.white}
               />
             </View>
@@ -170,7 +170,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ visible, onClose
               <Switch
                 value={preferences.highQualityVideo}
                 onValueChange={(val) => updatePreference('highQualityVideo', val)}
-                trackColor={{ false: '#27272a', true: Colors.accentCyan }}
+                trackColor={{ false: '#e4e4e7', true: Colors.accentCyan }}
                 thumbColor={Colors.white}
               />
             </View>
@@ -227,7 +227,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ visible, onClose
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#09090b',
+    backgroundColor: '#f4f4f5',
   },
   header: {
     flexDirection: 'row',
@@ -236,10 +236,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.borderGlass,
+    borderBottomColor: '#e4e4e7',
+    backgroundColor: '#ffffff',
   },
   headerTitle: {
-    color: Colors.white,
+    color: Colors.textPrimary,
     fontSize: 20,
     fontWeight: '700',
   },
@@ -247,7 +248,7 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 19,
-    backgroundColor: Colors.surfaceTranslucent,
+    backgroundColor: 'rgba(0, 0, 0, 0.06)',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -263,11 +264,16 @@ const styles = StyleSheet.create({
     marginTop: 16,
   },
   card: {
-    backgroundColor: Colors.surfaceCard,
+    backgroundColor: '#ffffff',
     borderRadius: 16,
     padding: 16,
     borderWidth: 1,
-    borderColor: Colors.borderGlass,
+    borderColor: '#e4e4e7',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 1,
   },
   row: {
     flexDirection: 'row',
@@ -276,7 +282,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   rowTitle: {
-    color: Colors.white,
+    color: Colors.textPrimary,
     fontSize: 15,
     fontWeight: '600',
   },
@@ -293,16 +299,16 @@ const styles = StyleSheet.create({
   },
   divider: {
     height: 1,
-    backgroundColor: Colors.borderGlass,
+    backgroundColor: '#e4e4e7',
     marginVertical: 8,
   },
   segmented: {
     flexDirection: 'row',
-    backgroundColor: '#18181b',
+    backgroundColor: '#e4e4e7',
     borderRadius: 12,
     padding: 3,
     borderWidth: 1,
-    borderColor: Colors.borderGlass,
+    borderColor: '#d4d4d8',
   },
   segmentBtn: {
     paddingHorizontal: 10,
@@ -310,7 +316,12 @@ const styles = StyleSheet.create({
     borderRadius: 9,
   },
   segmentBtnActive: {
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    backgroundColor: '#ffffff',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
   },
   segmentText: {
     color: Colors.textMuted,
@@ -318,7 +329,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   segmentTextActive: {
-    color: Colors.white,
+    color: Colors.textPrimary,
   },
   resetButton: {
     flexDirection: 'row',
@@ -328,8 +339,8 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: 'rgba(239, 68, 68, 0.35)',
-    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    borderColor: 'rgba(239, 68, 68, 0.25)',
+    backgroundColor: 'rgba(239, 68, 68, 0.08)',
   },
   resetText: {
     color: Colors.recordingRed,

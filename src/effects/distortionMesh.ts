@@ -106,6 +106,11 @@ export const getDistortionWarpParams = (
         factor: factor,
       },
     };
+  } else if (config.targetRegion === 'mouth') {
+    center = {
+      x: landmarks.mouth.x * width,
+      y: landmarks.mouth.y * height,
+    };
   } else if (config.targetRegion === 'face') {
     center = {
       x: landmarks.nose.x * width,

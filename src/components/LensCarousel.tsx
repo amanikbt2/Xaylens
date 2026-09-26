@@ -4,7 +4,6 @@ import {
   StyleSheet,
   FlatList,
   Text,
-  Animated,
   TouchableOpacity,
   NativeSyntheticEvent,
   NativeScrollEvent,
@@ -31,8 +30,6 @@ interface LensCarouselProps {
   onHoldStart?: () => void;
   onHoldEnd?: () => void;
 }
-
-const SHUTTER_RING_SIZE = 84;
 
 export const LensCarousel: React.FC<LensCarouselProps> = ({
   lenses,
@@ -61,36 +58,7 @@ export const LensCarousel: React.FC<LensCarouselProps> = ({
   );
   const lastIndexRef = useRef(activeIndex);
 
-  // Outer Big Ring pulse animation during recording
-  const ringPulseAnim = useRef(new Animated.Value(1)).current;
-
-  useEffect(() => {
-    let loop: Animated.CompositeAnimation | null = null;
-    if (isRecording) {
-      loop = Animated.loop(
-        Animated.sequence([
-          Animated.timing(ringPulseAnim, {
-            toValue: 1.08,
-            duration: 500,
-            useNativeDriver: true,
-          }),
-          Animated.timing(ringPulseAnim, {
-            toValue: 1,
-            duration: 500,
-            useNativeDriver: true,
-          }),
-        ])
-      );
-      loop.start();
-    } else {
-      ringPulseAnim.setValue(1);
-    }
-    return () => {
-      if (loop) loop.stop();
-    };
-  }, [isRecording, ringPulseAnim]);
-
-  // Scroll FlatList so the target lens sits dead-center inside the center ring
+  // Smooth helper to scroll FlatList so the active lens is centered
   const scrollToLensIndex = useCallback(
     (index: number, animated = true) => {
       if (index < 0 || index >= lenses.length || !flatListRef.current) return;
@@ -192,10 +160,6 @@ export const LensCarousel: React.FC<LensCarouselProps> = ({
     );
   };
 
-  const glowRingColor = isRecording
-    ? '#ef4444'
-    : activeLens.accentColor || '#38bdf8';
-
   return (
     <View style={styles.container} onLayout={handleLayout}>
       {/* Live Red Recording Timer Banner (shown when recording) */}
@@ -208,9 +172,8 @@ export const LensCarousel: React.FC<LensCarouselProps> = ({
         </View>
       )}
 
-      {/* SLEEK FROSTED GLASS CAROUSEL TRACK */}
+      {/* SLEEK FROSTED GLASS CAROUSEL TRACK (matching user screenshot media_1790400374579.png) */}
       <View style={styles.glassCarouselTrack}>
-        {/* FREE SNAP HORIZONTAL FLATLIST */}
         <FlatList
           ref={flatListRef}
           data={lenses}
@@ -242,23 +205,6 @@ export const LensCarousel: React.FC<LensCarouselProps> = ({
           maxToRenderPerBatch={11}
           windowSize={9}
         />
-
-        {/* FIXED SINGLE CENTER BIG SHUTTER RING (Positioned in exact center) */}
-        <View style={styles.centerTargetRingOverlay} pointerEvents="none">
-          <Animated.View
-            style={[
-              styles.neonShutterRing,
-              {
-                borderColor: glowRingColor,
-                shadowColor: glowRingColor,
-                transform: [{ scale: ringPulseAnim }],
-                backgroundColor: isRecording
-                  ? 'rgba(239, 68, 68, 0.22)'
-                  : 'transparent',
-              },
-            ]}
-          />
-        </View>
       </View>
 
       {/* LOWER BAR: Bookmark & Explore Buttons neatly organized BELOW the carousel */}
@@ -356,37 +302,16 @@ const styles = StyleSheet.create({
   },
   glassCarouselTrack: {
     width: '100%',
-    height: 104,
-    backgroundColor: 'rgba(5, 5, 10, 0.65)',
+    height: 108,
+    backgroundColor: 'rgba(5, 5, 10, 0.68)',
     justifyContent: 'center',
     alignItems: 'center',
-    position: 'relative',
     borderTopWidth: 1,
     borderBottomWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.1)',
   },
   flatListContent: {
     alignItems: 'center',
-  },
-  centerTargetRingOverlay: {
-    position: 'absolute',
-    top: 0,
-    bottom: 0,
-    left: '50%',
-    marginLeft: -SHUTTER_RING_SIZE / 2,
-    width: SHUTTER_RING_SIZE,
-    height: SHUTTER_RING_SIZE,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  neonShutterRing: {
-    width: SHUTTER_RING_SIZE,
-    height: SHUTTER_RING_SIZE,
-    borderRadius: SHUTTER_RING_SIZE / 2,
-    borderWidth: 4,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.85,
-    shadowRadius: 14,
   },
   lowerBar: {
     width: '100%',

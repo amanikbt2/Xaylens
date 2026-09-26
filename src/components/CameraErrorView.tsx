@@ -28,7 +28,7 @@ export const CameraErrorView: React.FC<CameraErrorViewProps> = ({ error, onRetry
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#09090b',
+    backgroundColor: '#f4f4f5',
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 36,
@@ -37,15 +37,15 @@ const styles = StyleSheet.create({
     width: 92,
     height: 92,
     borderRadius: 46,
-    backgroundColor: 'rgba(239, 68, 68, 0.15)',
+    backgroundColor: 'rgba(239, 68, 68, 0.12)',
     borderWidth: 1,
-    borderColor: 'rgba(239, 68, 68, 0.4)',
+    borderColor: 'rgba(239, 68, 68, 0.3)',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 20,
   },
   title: {
-    color: Colors.white,
+    color: Colors.textPrimary,
     fontSize: 20,
     fontWeight: '700',
     marginBottom: 8,
@@ -59,13 +59,13 @@ const styles = StyleSheet.create({
     marginBottom: 28,
   },
   button: {
-    backgroundColor: Colors.white,
+    backgroundColor: Colors.textPrimary,
     paddingVertical: 12,
     paddingHorizontal: 28,
     borderRadius: 24,
   },
   buttonText: {
-    color: Colors.black,
+    color: Colors.white,
     fontSize: 15,
     fontWeight: '700',
   },

@@ -3,25 +3,27 @@ export const Colors = {
   black: '#000000',
   nearBlack: '#09090b',
   surfaceDark: '#121216',
-  surfaceCard: 'rgba(24, 24, 27, 0.75)',
-  surfaceTranslucent: 'rgba(15, 15, 20, 0.45)',
-  surfaceGlass: 'rgba(255, 255, 255, 0.12)',
-  surfaceGlassHover: 'rgba(255, 255, 255, 0.20)',
-  borderGlass: 'rgba(255, 255, 255, 0.16)',
-  borderGlassActive: 'rgba(255, 255, 255, 0.40)',
+  surfaceCard: '#ffffff',
+  surfaceCardDark: 'rgba(24, 24, 27, 0.75)',
+  surfaceTranslucent: 'rgba(0, 0, 0, 0.05)',
+  surfaceGlass: 'rgba(0, 0, 0, 0.04)',
+  surfaceGlassHover: 'rgba(0, 0, 0, 0.08)',
+  borderGlass: '#e4e4e7',
+  borderGlassActive: '#d4d4d8',
 
   // Typography & UI elements
   white: '#ffffff',
-  textSecondary: '#a1a1aa',
+  textPrimary: '#09090b',
+  textSecondary: '#52525b',
   textMuted: '#71717a',
 
   // Accents & status
   recordingRed: '#ef4444',
   recordingRedGlow: 'rgba(239, 68, 68, 0.4)',
-  accentYellow: '#facc15',
-  accentCyan: '#06b6d4',
+  accentYellow: '#eab308',
+  accentCyan: '#0891b2',
   accentPurple: '#a855f7',
-  accentGreen: '#22c55e',
+  accentGreen: '#16a34a',
 
   // Active ring & indicators
   lensActiveRing: '#ffffff',

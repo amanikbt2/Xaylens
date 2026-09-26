@@ -15,7 +15,7 @@ export const PermissionView: React.FC<PermissionViewProps> = ({
   return (
     <View style={styles.container}>
       <View style={styles.iconCircle}>
-        <Ionicons name="camera-outline" size={48} color={Colors.white} />
+        <Ionicons name="camera-outline" size={48} color={Colors.textPrimary} />
       </View>
 
       <Text style={styles.title}>Camera Access Needed</Text>
@@ -46,7 +46,7 @@ export const PermissionView: React.FC<PermissionViewProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#09090b',
+    backgroundColor: '#f4f4f5',
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 36,
@@ -55,15 +55,15 @@ const styles = StyleSheet.create({
     width: 96,
     height: 96,
     borderRadius: 48,
-    backgroundColor: Colors.surfaceTranslucent,
+    backgroundColor: 'rgba(0, 0, 0, 0.05)',
     borderWidth: 1,
-    borderColor: Colors.borderGlass,
+    borderColor: '#e4e4e7',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 24,
   },
   title: {
-    color: Colors.white,
+    color: Colors.textPrimary,
     fontSize: 22,
     fontWeight: '700',
     marginBottom: 12,
@@ -77,26 +77,27 @@ const styles = StyleSheet.create({
     marginBottom: 32,
   },
   button: {
-    backgroundColor: Colors.white,
+    backgroundColor: Colors.textPrimary,
     paddingVertical: 14,
     paddingHorizontal: 36,
     borderRadius: 28,
-    shadowColor: Colors.white,
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
+    shadowOpacity: 0.1,
     shadowRadius: 6,
+    elevation: 3,
   },
   buttonText: {
-    color: Colors.black,
+    color: Colors.white,
     fontSize: 16,
     fontWeight: '700',
   },
   settingsNotice: {
-    backgroundColor: Colors.surfaceCard,
+    backgroundColor: '#ffffff',
     padding: 16,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: Colors.borderGlass,
+    borderColor: '#e4e4e7',
   },
   settingsText: {
     color: Colors.textSecondary,
