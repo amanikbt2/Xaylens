@@ -146,19 +146,39 @@ const COLOR_FILTERS: ColorFilterOption[] = [
   },
 ];
 
-type TextStyleVariant = 'pill' | 'neon' | 'banner' | 'outline';
-
 interface VideoCaption {
   id: string;
   text: string;
   color: string;
-  styleVariant: TextStyleVariant;
+  bgColor: string;
   x: number; // relative offset in px
   y: number; // relative offset in px
 }
 
+interface BgFillOption {
+  id: string;
+  label: string;
+  color: string;
+  previewBorder?: string;
+}
+
+const BG_FILL_OPTIONS: BgFillOption[] = [
+  { id: 'transparent', label: 'None', color: 'transparent', previewBorder: '#94a3b8' },
+  { id: 'dark_glass', label: 'Glass', color: 'rgba(0, 0, 0, 0.65)' },
+  { id: 'black', label: 'Black', color: '#000000' },
+  { id: 'white', label: 'White', color: '#ffffff', previewBorder: '#cbd5e1' },
+  { id: 'yellow', label: 'Yellow', color: '#facc15' },
+  { id: 'red', label: 'Red', color: '#ef4444' },
+  { id: 'pink', label: 'Pink', color: '#ec4899' },
+  { id: 'cyan', label: 'Cyan', color: '#06b6d4' },
+  { id: 'green', label: 'Green', color: '#22c55e' },
+  { id: 'purple', label: 'Purple', color: '#a855f7' },
+  { id: 'orange', label: 'Orange', color: '#fb923c' },
+];
+
 const TEXT_COLORS = [
   '#ffffff',
+  '#09090b',
   '#facc15',
   '#ef4444',
   '#ec4899',
@@ -199,6 +219,8 @@ const DraggableCaptionItem: React.FC<{
     })
   ).current;
 
+  const isTransparent = caption.bgColor === 'transparent';
+
   return (
     <View
       style={[
@@ -212,34 +234,25 @@ const DraggableCaptionItem: React.FC<{
       <View
         style={[
           styles.captionBox,
-          caption.styleVariant === 'pill' && styles.captionPill,
-          caption.styleVariant === 'banner' && {
-            backgroundColor: caption.color,
-            paddingHorizontal: 18,
-            paddingVertical: 8,
-            borderRadius: 10,
-          },
-          caption.styleVariant === 'neon' && {
-            backgroundColor: 'rgba(0,0,0,0.35)',
-            borderColor: caption.color,
-            borderWidth: 1.5,
+          {
+            backgroundColor: caption.bgColor || 'rgba(0, 0, 0, 0.65)',
+            paddingHorizontal: isTransparent ? 6 : 14,
+            paddingVertical: isTransparent ? 3 : 7,
+            borderRadius: 14,
+            borderWidth: isTransparent ? 0 : 1,
+            borderColor:
+              caption.bgColor === '#ffffff'
+                ? '#cbd5e1'
+                : 'rgba(255, 255, 255, 0.25)',
           },
         ]}
       >
         <Text
           style={[
             styles.captionText,
-            {
-              color:
-                caption.styleVariant === 'banner' &&
-                (caption.color === '#ffffff' || caption.color === '#facc15')
-                  ? '#09090b'
-                  : caption.styleVariant === 'banner'
-                  ? '#ffffff'
-                  : caption.color,
-            },
-            caption.styleVariant === 'neon' && createTextShadow(caption.color, { width: 0, height: 0 }, 12),
-            caption.styleVariant === 'outline' && createTextShadow('#000000', { width: 1.5, height: 1.5 }, 2),
+            { color: caption.color },
+            isTransparent &&
+              createTextShadow('rgba(0,0,0,0.95)', { width: 1.5, height: 1.5 }, 3),
           ]}
         >
           {caption.text}
@@ -281,9 +294,9 @@ export const MediaPreviewModal: React.FC<MediaPreviewModalProps> = ({
   // Text Overlays State
   const [captions, setCaptions] = useState<VideoCaption[]>([]);
   const [editingCaptionId, setEditingCaptionId] = useState<string | null>(null);
-  const [draftText, setDraftText] = useState<string>('');
+  const [draftText, setDraftText] = useState<string>('New Text');
   const [draftColor, setDraftColor] = useState<string>('#ffffff');
-  const [draftVariant, setDraftVariant] = useState<TextStyleVariant>('pill');
+  const [draftBg, setDraftBg] = useState<string>('rgba(0, 0, 0, 0.65)');
 
   // Web HTML5 Video + WebAudio API DSP refs
   const webVideoRef = useRef<HTMLVideoElement | null>(null);
@@ -428,51 +441,73 @@ export const MediaPreviewModal: React.FC<MediaPreviewModalProps> = ({
       setEditingCaptionId(existing.id);
       setDraftText(existing.text);
       setDraftColor(existing.color);
-      setDraftVariant(existing.styleVariant);
+      setDraftBg(existing.bgColor || 'rgba(0, 0, 0, 0.65)');
     } else {
-      setEditingCaptionId(null);
-      setDraftText('');
-      setDraftColor('#ffffff');
-      setDraftVariant('pill');
+      const newId = `cap_${Date.now()}`;
+      const defaultText = 'New Text';
+      const defaultColor = '#ffffff';
+      const defaultBg = 'rgba(0, 0, 0, 0.65)';
+      const newCaption: VideoCaption = {
+        id: newId,
+        text: defaultText,
+        color: defaultColor,
+        bgColor: defaultBg,
+        x: 0,
+        y: 0,
+      };
+      setCaptions((prev) => [...prev, newCaption]);
+      setEditingCaptionId(newId);
+      setDraftText(defaultText);
+      setDraftColor(defaultColor);
+      setDraftBg(defaultBg);
     }
     setActiveTool('text');
   };
 
-  const handleCommitText = () => {
-    const trimmed = draftText.trim();
-    if (!trimmed) {
-      setActiveTool('none');
-      return;
-    }
+  const handleDraftTextChange = (text: string) => {
+    setDraftText(text);
     if (editingCaptionId) {
       setCaptions((prev) =>
         prev.map((c) =>
-          c.id === editingCaptionId
-            ? {
-                ...c,
-                text: trimmed,
-                color: draftColor,
-                styleVariant: draftVariant,
-              }
-            : c
+          c.id === editingCaptionId ? { ...c, text: text || ' ' } : c
         )
       );
-    } else {
-      setCaptions((prev) => [
-        ...prev,
-        {
-          id: `cap_${Date.now()}`,
-          text: trimmed,
-          color: draftColor,
-          styleVariant: draftVariant,
-          x: 0,
-          y: (prev.length % 3) * 44 - 30,
-        },
-      ]);
+    }
+  };
+
+  const handleSelectColor = (color: string) => {
+    triggerShutterPressHaptic();
+    setDraftColor(color);
+    if (editingCaptionId) {
+      setCaptions((prev) =>
+        prev.map((c) => (c.id === editingCaptionId ? { ...c, color } : c))
+      );
+    }
+  };
+
+  const handleSelectBg = (bgColor: string) => {
+    triggerShutterPressHaptic();
+    setDraftBg(bgColor);
+    if (editingCaptionId) {
+      setCaptions((prev) =>
+        prev.map((c) => (c.id === editingCaptionId ? { ...c, bgColor } : c))
+      );
+    }
+  };
+
+  const handleCloseTextEditor = () => {
+    if (editingCaptionId) {
+      if (!draftText.trim()) {
+        setCaptions((prev) => prev.filter((c) => c.id !== editingCaptionId));
+      }
     }
     setDraftText('');
     setEditingCaptionId(null);
     setActiveTool('none');
+  };
+
+  const handleCommitText = () => {
+    handleCloseTextEditor();
   };
 
   const handleMoveCaption = useCallback((id: string, x: number, y: number) => {
@@ -484,6 +519,14 @@ export const MediaPreviewModal: React.FC<MediaPreviewModalProps> = ({
   const handleDeleteCaption = useCallback((id: string) => {
     triggerShutterPressHaptic();
     setCaptions((prev) => prev.filter((c) => c.id !== id));
+    setEditingCaptionId((curr) => {
+      if (curr === id) {
+        setDraftText('');
+        setActiveTool('none');
+        return null;
+      }
+      return curr;
+    });
   }, []);
 
   // Export & Save to Gallery (Top-Right Export Button)
@@ -533,7 +576,7 @@ export const MediaPreviewModal: React.FC<MediaPreviewModalProps> = ({
               activeOpacity={0.75}
               accessibilityLabel="Discard and return to camera"
             >
-              <Ionicons name="chevron-back" size={22} color={Colors.white} />
+              <Ionicons name="chevron-back" size={22} color="#09090b" />
               <Text style={styles.discardText}>Retake</Text>
             </TouchableOpacity>
 
@@ -663,13 +706,24 @@ export const MediaPreviewModal: React.FC<MediaPreviewModalProps> = ({
                 ]}
                 onPress={() =>
                   activeTool === 'text'
-                    ? setActiveTool('none')
+                    ? handleCloseTextEditor()
                     : handleOpenTextEditor()
                 }
                 activeOpacity={0.8}
               >
-                <Ionicons name="text" size={22} color={Colors.white} />
-                <Text style={styles.dockToolLabel}>Text</Text>
+                <Ionicons
+                  name="text"
+                  size={22}
+                  color={activeTool === 'text' ? '#eab308' : '#0f172a'}
+                />
+                <Text
+                  style={[
+                    styles.dockToolLabel,
+                    activeTool === 'text' && { color: '#eab308' },
+                  ]}
+                >
+                  Text
+                </Text>
               </TouchableOpacity>
 
               {/* 2. Smart Voice Changer & Pitch */}
@@ -692,11 +746,22 @@ export const MediaPreviewModal: React.FC<MediaPreviewModalProps> = ({
                   size={22}
                   color={
                     voiceEffect !== 'normal' || customPitchSemitones !== 0
-                      ? Colors.accentYellow
-                      : Colors.white
+                      ? '#eab308'
+                      : activeTool === 'voice'
+                      ? '#eab308'
+                      : '#0f172a'
                   }
                 />
-                <Text style={styles.dockToolLabel}>Voice</Text>
+                <Text
+                  style={[
+                    styles.dockToolLabel,
+                    (voiceEffect !== 'normal' || customPitchSemitones !== 0) && {
+                      color: '#eab308',
+                    },
+                  ]}
+                >
+                  Voice
+                </Text>
               </TouchableOpacity>
 
               {/* 3. Smart Playback Speed */}
@@ -716,10 +781,21 @@ export const MediaPreviewModal: React.FC<MediaPreviewModalProps> = ({
                   name="speedometer-outline"
                   size={22}
                   color={
-                    playbackSpeed !== 1.0 ? Colors.accentCyan : Colors.white
+                    playbackSpeed !== 1.0
+                      ? '#0284c7'
+                      : activeTool === 'speed'
+                      ? '#0284c7'
+                      : '#0f172a'
                   }
                 />
-                <Text style={styles.dockToolLabel}>{playbackSpeed}x</Text>
+                <Text
+                  style={[
+                    styles.dockToolLabel,
+                    playbackSpeed !== 1.0 && { color: '#0284c7' },
+                  ]}
+                >
+                  {playbackSpeed}x
+                </Text>
               </TouchableOpacity>
 
               {/* 4. Color Vibe Filter */}
@@ -739,10 +815,21 @@ export const MediaPreviewModal: React.FC<MediaPreviewModalProps> = ({
                   name="color-wand-outline"
                   size={22}
                   color={
-                    colorFilter !== 'none' ? '#ec4899' : Colors.white
+                    colorFilter !== 'none'
+                      ? '#db2777'
+                      : activeTool === 'filter'
+                      ? '#db2777'
+                      : '#0f172a'
                   }
                 />
-                <Text style={styles.dockToolLabel}>Vibe</Text>
+                <Text
+                  style={[
+                    styles.dockToolLabel,
+                    colorFilter !== 'none' && { color: '#db2777' },
+                  ]}
+                >
+                  Vibe
+                </Text>
               </TouchableOpacity>
 
               {/* 5. Audio Mute Toggle */}
@@ -757,9 +844,14 @@ export const MediaPreviewModal: React.FC<MediaPreviewModalProps> = ({
                 <Ionicons
                   name={isMuted ? 'volume-mute-outline' : 'volume-high-outline'}
                   size={22}
-                  color={isMuted ? '#ef4444' : Colors.white}
+                  color={isMuted ? '#ef4444' : '#0f172a'}
                 />
-                <Text style={styles.dockToolLabel}>
+                <Text
+                  style={[
+                    styles.dockToolLabel,
+                    isMuted && { color: '#ef4444' },
+                  ]}
+                >
                   {isMuted ? 'Muted' : 'Sound'}
                 </Text>
               </TouchableOpacity>
@@ -786,64 +878,109 @@ export const MediaPreviewModal: React.FC<MediaPreviewModalProps> = ({
                     <TextInput
                       style={styles.textInputBox}
                       placeholder="Type caption on video..."
-                      placeholderTextColor="rgba(255,255,255,0.45)"
+                      placeholderTextColor="#94a3b8"
                       value={draftText}
-                      onChangeText={setDraftText}
+                      onChangeText={handleDraftTextChange}
                       autoFocus
                       maxLength={80}
                       returnKeyType="done"
                       onSubmitEditing={handleCommitText}
                     />
 
-                    {/* Style Variant Picker */}
-                    <View style={styles.variantRow}>
-                      {(
-                        [
-                          { id: 'pill', label: 'Glass Pill' },
-                          { id: 'banner', label: 'Bold Label' },
-                          { id: 'neon', label: 'Neon Glow' },
-                          { id: 'outline', label: 'Outline' },
-                        ] as { id: TextStyleVariant; label: string }[]
-                      ).map((v) => (
-                        <TouchableOpacity
-                          key={v.id}
-                          style={[
-                            styles.variantChip,
-                            draftVariant === v.id && styles.variantChipActive,
-                          ]}
-                          onPress={() => setDraftVariant(v.id)}
-                        >
-                          <Text
-                            style={[
-                              styles.variantChipText,
-                              draftVariant === v.id &&
-                                styles.variantChipTextActive,
-                            ]}
-                          >
-                            {v.label}
-                          </Text>
-                        </TouchableOpacity>
-                      ))}
+                    {/* Text Color Picker */}
+                    <View style={styles.pickerSectionRow}>
+                      <Text style={styles.pickerSectionLabel}>TEXT COLOR</Text>
+                      <ScrollView
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                        contentContainerStyle={styles.colorSwatchesRow}
+                      >
+                        {TEXT_COLORS.map((c) => {
+                          const isSelected = draftColor === c;
+                          return (
+                            <TouchableOpacity
+                              key={c}
+                              style={[
+                                styles.colorSwatch,
+                                { backgroundColor: c },
+                                isSelected && styles.colorSwatchActive,
+                                (c === '#ffffff' || c === '#facc15') &&
+                                  styles.lightColorSwatchBorder,
+                              ]}
+                              onPress={() => handleSelectColor(c)}
+                            >
+                              {isSelected && (
+                                <Ionicons
+                                  name="checkmark"
+                                  size={15}
+                                  color={
+                                    c === '#ffffff' || c === '#facc15'
+                                      ? '#09090b'
+                                      : '#ffffff'
+                                  }
+                                />
+                              )}
+                            </TouchableOpacity>
+                          );
+                        })}
+                      </ScrollView>
                     </View>
 
-                    {/* Color Swatches */}
-                    <ScrollView
-                      horizontal
-                      showsHorizontalScrollIndicator={false}
-                      contentContainerStyle={styles.colorSwatchesRow}
-                    >
-                      {TEXT_COLORS.map((c) => (
-                        <TouchableOpacity
-                          key={c}
-                          style={[
-                            styles.colorSwatch,
-                            { backgroundColor: c },
-                            draftColor === c && styles.colorSwatchActive,
-                          ]}
-                          onPress={() => setDraftColor(c)}
-                        />
-                      ))}
-                    </ScrollView>
+                    {/* Background Fill Picker */}
+                    <View style={[styles.pickerSectionRow, { marginTop: 8 }]}>
+                      <Text style={styles.pickerSectionLabel}>
+                        BACKGROUND FILL
+                      </Text>
+                      <ScrollView
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                        contentContainerStyle={styles.bgFillScrollRow}
+                      >
+                        {BG_FILL_OPTIONS.map((bg) => {
+                          const isSelected = draftBg === bg.color;
+                          return (
+                            <TouchableOpacity
+                              key={bg.id}
+                              style={[
+                                styles.bgFillChip,
+                                isSelected && styles.bgFillChipActive,
+                              ]}
+                              onPress={() => handleSelectBg(bg.color)}
+                            >
+                              <View
+                                style={[
+                                  styles.bgFillColorPreview,
+                                  {
+                                    backgroundColor:
+                                      bg.color === 'transparent'
+                                        ? '#e2e8f0'
+                                        : bg.color,
+                                    borderColor:
+                                      bg.previewBorder || 'rgba(0, 0, 0, 0.12)',
+                                  },
+                                ]}
+                              >
+                                {bg.id === 'transparent' && (
+                                  <Ionicons
+                                    name="close"
+                                    size={13}
+                                    color="#64748b"
+                                  />
+                                )}
+                              </View>
+                              <Text
+                                style={[
+                                  styles.bgFillChipLabel,
+                                  isSelected && styles.bgFillChipLabelActive,
+                                ]}
+                              >
+                                {bg.label}
+                              </Text>
+                            </TouchableOpacity>
+                          );
+                        })}
+                      </ScrollView>
+                    </View>
                   </View>
                 )}
 
@@ -877,8 +1014,11 @@ export const MediaPreviewModal: React.FC<MediaPreviewModalProps> = ({
                             style={[
                               styles.voiceChip,
                               selected && {
-                                borderColor: preset.color,
-                                backgroundColor: 'rgba(255,255,255,0.14)',
+                                borderColor:
+                                  preset.color === '#ffffff'
+                                    ? '#09090b'
+                                    : preset.color,
+                                backgroundColor: 'rgba(0, 0, 0, 0.05)',
                               },
                             ]}
                             onPress={() => {
@@ -889,12 +1029,23 @@ export const MediaPreviewModal: React.FC<MediaPreviewModalProps> = ({
                             <Ionicons
                               name={preset.icon}
                               size={20}
-                              color={selected ? preset.color : Colors.white}
+                              color={
+                                selected
+                                  ? preset.color === '#ffffff'
+                                    ? '#09090b'
+                                    : preset.color
+                                  : '#09090b'
+                              }
                             />
                             <Text
                               style={[
                                 styles.voiceChipLabel,
-                                selected && { color: preset.color },
+                                selected && {
+                                  color:
+                                    preset.color === '#ffffff'
+                                      ? '#09090b'
+                                      : preset.color,
+                                },
                               ]}
                             >
                               {preset.label}
@@ -908,7 +1059,7 @@ export const MediaPreviewModal: React.FC<MediaPreviewModalProps> = ({
                     <View style={styles.pitchControlBar}>
                       <Text style={styles.pitchLabel}>
                         Fine Pitch:{' '}
-                        <Text style={{ color: Colors.accentYellow }}>
+                        <Text style={{ color: '#ca8a04', fontWeight: '700' }}>
                           {customPitchSemitones > 0
                             ? `+${customPitchSemitones}`
                             : customPitchSemitones}{' '}
@@ -922,7 +1073,7 @@ export const MediaPreviewModal: React.FC<MediaPreviewModalProps> = ({
                             setCustomPitchSemitones((p) => Math.max(-12, p - 2))
                           }
                         >
-                          <Ionicons name="remove" size={18} color={Colors.white} />
+                          <Ionicons name="remove" size={18} color="#09090b" />
                         </TouchableOpacity>
                         <TouchableOpacity
                           style={styles.pitchStepBtn}
@@ -936,7 +1087,7 @@ export const MediaPreviewModal: React.FC<MediaPreviewModalProps> = ({
                             setCustomPitchSemitones((p) => Math.min(12, p + 2))
                           }
                         >
-                          <Ionicons name="add" size={18} color={Colors.white} />
+                          <Ionicons name="add" size={18} color="#09090b" />
                         </TouchableOpacity>
                       </View>
                     </View>
@@ -1009,8 +1160,8 @@ export const MediaPreviewModal: React.FC<MediaPreviewModalProps> = ({
                             style={[
                               styles.voiceChip,
                               selected && {
-                                borderColor: '#ec4899',
-                                backgroundColor: 'rgba(236, 72, 153, 0.16)',
+                                borderColor: '#db2777',
+                                backgroundColor: 'rgba(219, 39, 119, 0.08)',
                               },
                             ]}
                             onPress={() => {
@@ -1021,14 +1172,12 @@ export const MediaPreviewModal: React.FC<MediaPreviewModalProps> = ({
                             <Ionicons
                               name="sparkles-outline"
                               size={18}
-                              color={
-                                selected ? '#ec4899' : Colors.white
-                              }
+                              color={selected ? '#db2777' : '#09090b'}
                             />
                             <Text
                               style={[
                                 styles.voiceChipLabel,
-                                selected && { color: '#ec4899' },
+                                selected && { color: '#db2777' },
                               ]}
                             >
                               {f.label}
@@ -1051,7 +1200,7 @@ export const MediaPreviewModal: React.FC<MediaPreviewModalProps> = ({
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: '#000000',
+    backgroundColor: '#f8fafc',
   },
   desktopFrame: {
     flex: 1,
@@ -1059,7 +1208,7 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: Platform.OS === 'web' ? 440 : undefined,
     height: '100%',
-    backgroundColor: '#09090b',
+    backgroundColor: '#ffffff',
   },
   topHeader: {
     flexDirection: 'row',
@@ -1067,19 +1216,23 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 14,
     paddingVertical: 10,
-    backgroundColor: '#09090b',
+    backgroundColor: '#ffffff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#f1f5f9',
     zIndex: 40,
   },
   discardBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: '#f1f5f9',
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
   },
   discardText: {
-    color: Colors.white,
+    color: '#09090b',
     fontSize: 13,
     fontWeight: '600',
     marginLeft: 2,
@@ -1087,14 +1240,16 @@ const styles = StyleSheet.create({
   statusSummaryPill: {
     flex: 1,
     marginHorizontal: 8,
-    backgroundColor: 'rgba(255, 255, 255, 0.07)',
+    backgroundColor: '#f8fafc',
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 14,
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
   },
   statusSummaryText: {
-    color: 'rgba(255, 255, 255, 0.85)',
+    color: '#475569',
     fontSize: 11,
     fontWeight: '600',
   },
@@ -1106,11 +1261,11 @@ const styles = StyleSheet.create({
     paddingVertical: 9,
     borderRadius: 22,
     gap: 6,
-    ...createShadow(Colors.accentYellow, { width: 0, height: 2 }, 0.4, 6, 3),
+    ...createShadow(Colors.accentYellow, { width: 0, height: 2 }, 0.25, 4, 2),
   },
   exportTopBtnSuccess: {
-    backgroundColor: '#4ade80',
-    shadowColor: '#4ade80',
+    backgroundColor: '#22c55e',
+    shadowColor: '#22c55e',
   },
   exportTopBtnText: {
     color: '#09090b',
@@ -1173,18 +1328,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   captionBox: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 12,
     maxWidth: 300,
   },
-  captionPill: {
-    backgroundColor: 'rgba(9, 9, 11, 0.76)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
-  },
   captionText: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: '800',
     textAlign: 'center',
   },
@@ -1192,8 +1339,9 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: -8,
     right: -8,
-    backgroundColor: '#09090b',
+    backgroundColor: '#ffffff',
     borderRadius: 10,
+    ...createShadow('#000000', { width: 0, height: 1 }, 0.15, 2, 1),
   },
   exportedBanner: {
     position: 'absolute',
@@ -1201,7 +1349,7 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#4ade80',
+    backgroundColor: '#22c55e',
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
@@ -1209,7 +1357,7 @@ const styles = StyleSheet.create({
     zIndex: 45,
   },
   exportedBannerText: {
-    color: '#09090b',
+    color: '#ffffff',
     fontSize: 13,
     fontWeight: '800',
   },
@@ -1217,15 +1365,16 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: 12,
     top: 24,
-    backgroundColor: 'rgba(12, 12, 16, 0.65)',
+    backgroundColor: 'rgba(255, 255, 255, 0.94)',
     borderRadius: 26,
     paddingVertical: 10,
     paddingHorizontal: 6,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.16)',
+    borderColor: 'rgba(0, 0, 0, 0.08)',
     alignItems: 'center',
     gap: 12,
     zIndex: 30,
+    ...createShadow('#000000', { width: 0, height: 2 }, 0.1, 8, 3),
   },
   dockToolBtn: {
     alignItems: 'center',
@@ -1235,10 +1384,10 @@ const styles = StyleSheet.create({
     borderRadius: 16,
   },
   dockToolBtnActive: {
-    backgroundColor: 'rgba(255, 255, 255, 0.16)',
+    backgroundColor: 'rgba(0, 0, 0, 0.08)',
   },
   dockToolLabel: {
-    color: Colors.white,
+    color: '#475569',
     fontSize: 10,
     fontWeight: '700',
     marginTop: 3,
@@ -1248,12 +1397,13 @@ const styles = StyleSheet.create({
     bottom: 12,
     left: 12,
     right: 12,
-    backgroundColor: 'rgba(12, 12, 16, 0.92)',
-    borderRadius: 22,
+    backgroundColor: '#ffffff',
+    borderRadius: 24,
     padding: 16,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.18)',
+    borderColor: '#e2e8f0',
     zIndex: 35,
+    ...createShadow('#000000', { width: 0, height: 4 }, 0.15, 14, 4),
   },
   drawerSection: {
     width: '100%',
@@ -1265,98 +1415,126 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   drawerTitle: {
-    color: Colors.white,
-    fontSize: 14,
+    color: '#09090b',
+    fontSize: 15,
     fontWeight: '700',
   },
   resetLinkText: {
-    color: Colors.accentYellow,
+    color: '#ca8a04',
     fontSize: 12,
     fontWeight: '700',
   },
   doneSmallBtn: {
-    backgroundColor: Colors.accentYellow,
-    paddingHorizontal: 14,
-    paddingVertical: 5,
-    borderRadius: 14,
+    backgroundColor: '#09090b',
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderRadius: 16,
   },
   doneSmallBtnText: {
-    color: '#09090b',
+    color: '#ffffff',
     fontSize: 12,
     fontWeight: '800',
   },
   textInputBox: {
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    color: Colors.white,
-    fontSize: 15,
+    backgroundColor: '#f8fafc',
+    color: '#09090b',
+    fontSize: 16,
     fontWeight: '600',
     paddingHorizontal: 14,
     paddingVertical: 10,
     borderRadius: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
+    borderWidth: 1.5,
+    borderColor: '#e2e8f0',
     marginBottom: 10,
   },
-  variantRow: {
-    flexDirection: 'row',
-    gap: 8,
-    marginBottom: 10,
+  pickerSectionRow: {
+    marginBottom: 6,
   },
-  variantChip: {
-    flex: 1,
-    paddingVertical: 6,
-    borderRadius: 12,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: 'transparent',
-  },
-  variantChipActive: {
-    borderColor: Colors.accentYellow,
-    backgroundColor: 'rgba(250, 204, 21, 0.15)',
-  },
-  variantChipText: {
-    color: 'rgba(255,255,255,0.75)',
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  variantChipTextActive: {
-    color: Colors.accentYellow,
+  pickerSectionLabel: {
+    color: '#64748b',
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.8,
+    marginBottom: 6,
   },
   colorSwatchesRow: {
     flexDirection: 'row',
-    gap: 10,
+    gap: 8,
     paddingVertical: 4,
+    alignItems: 'center',
   },
   colorSwatch: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
     borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.25)',
+    borderColor: 'transparent',
+  },
+  lightColorSwatchBorder: {
+    borderColor: '#cbd5e1',
   },
   colorSwatchActive: {
-    borderColor: '#ffffff',
+    borderColor: '#09090b',
     transform: [{ scale: 1.15 }],
+  },
+  bgFillScrollRow: {
+    flexDirection: 'row',
+    gap: 8,
+    paddingVertical: 4,
+    alignItems: 'center',
+  },
+  bgFillChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f8fafc',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: '#e2e8f0',
+    gap: 6,
+  },
+  bgFillChipActive: {
+    borderColor: '#09090b',
+    backgroundColor: '#f1f5f9',
+  },
+  bgFillColorPreview: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    borderWidth: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  bgFillChipLabel: {
+    color: '#475569',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  bgFillChipLabelActive: {
+    color: '#09090b',
+    fontWeight: '800',
   },
   horizontalPresetsRow: {
     flexDirection: 'row',
-    gap: 10,
-    paddingBottom: 6,
+    gap: 8,
+    paddingBottom: 4,
   },
   voiceChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    backgroundColor: '#f8fafc',
     paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 16,
+    paddingVertical: 9,
+    borderRadius: 14,
     borderWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.12)',
+    borderColor: '#e2e8f0',
     gap: 7,
   },
   voiceChipLabel: {
-    color: Colors.white,
+    color: '#09090b',
     fontSize: 12,
     fontWeight: '700',
   },
@@ -1367,10 +1545,10 @@ const styles = StyleSheet.create({
     marginTop: 10,
     paddingTop: 10,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.1)',
+    borderTopColor: '#f1f5f9',
   },
   pitchLabel: {
-    color: Colors.white,
+    color: '#475569',
     fontSize: 12,
     fontWeight: '600',
   },
@@ -1383,12 +1561,14 @@ const styles = StyleSheet.create({
     width: 34,
     height: 30,
     borderRadius: 10,
-    backgroundColor: 'rgba(255, 255, 255, 0.14)',
+    backgroundColor: '#f1f5f9',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
     justifyContent: 'center',
     alignItems: 'center',
   },
   pitchZeroText: {
-    color: Colors.white,
+    color: '#09090b',
     fontSize: 12,
     fontWeight: '700',
   },
@@ -1399,27 +1579,27 @@ const styles = StyleSheet.create({
   },
   speedOptionBtn: {
     flex: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    backgroundColor: '#f8fafc',
     paddingVertical: 10,
     borderRadius: 14,
     alignItems: 'center',
     borderWidth: 1.5,
-    borderColor: 'transparent',
+    borderColor: '#e2e8f0',
   },
   speedOptionBtnActive: {
-    borderColor: Colors.accentCyan,
-    backgroundColor: 'rgba(56, 189, 248, 0.16)',
+    borderColor: '#0284c7',
+    backgroundColor: 'rgba(2, 132, 199, 0.08)',
   },
   speedOptionValue: {
-    color: Colors.white,
+    color: '#09090b',
     fontSize: 14,
     fontWeight: '800',
   },
   speedOptionValueActive: {
-    color: Colors.accentCyan,
+    color: '#0284c7',
   },
   speedOptionDesc: {
-    color: 'rgba(255, 255, 255, 0.6)',
+    color: '#64748b',
     fontSize: 10,
     marginTop: 2,
   },

@@ -61,6 +61,7 @@ export interface LensConfig {
 
 export interface Lens {
   id: string;
+  code?: string;
   name: string;
   category: LensCategory;
   description: string;

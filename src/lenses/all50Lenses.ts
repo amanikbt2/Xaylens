@@ -11,8 +11,8 @@ import { puppyLens } from './definitions/puppy';
 import { bunnyLens } from './definitions/bunny';
 import { funnyGlassesLens } from './definitions/funnyGlasses';
 
-// Array of 50 lenses with numbered names (01, 02, ... 50)
-export const ALL_50_LENSES: Lens[] = [
+// Array of 50 lenses with unique codes (L001, L002, ... L050)
+const RAW_LENSES: Lens[] = [
   // 01 to 11: Base lenses with numbers added to names
   { ...normalLens, id: 'normal', name: '01. Natural' },
   { ...bigNoseLens, id: 'big-nose', name: '02. Big Nose' },
@@ -621,3 +621,14 @@ export const ALL_50_LENSES: Lens[] = [
     },
   },
 ];
+
+export const ALL_50_LENSES: Lens[] = RAW_LENSES.map((lens, idx) => {
+  const num = idx + 1;
+  const code = `L${num < 10 ? '00' : num < 100 ? '0' : ''}${num}`;
+  const cleanName = lens.name.replace(/^(\d+|L\d+)\.\s*/, '');
+  return {
+    ...lens,
+    code,
+    name: `${code}. ${cleanName}`,
+  };
+});

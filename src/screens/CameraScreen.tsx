@@ -2,7 +2,6 @@ import React, { useRef, useState, useCallback, useMemo } from 'react';
 import {
   View,
   StyleSheet,
-  TouchableOpacity,
   Text,
   ActivityIndicator,
   Platform,
@@ -274,35 +273,23 @@ export const CameraScreen: React.FC = () => {
               lenses={lenses}
               activeLens={activeLens}
               isRecording={isRecording}
+              isPaused={isPaused}
               formattedTime={formattedTime}
               isFavorite={isFavorite(activeLens.id)}
               hasMore={hasMore}
               isFetchingMore={isFetchingMore}
               fetchNotice={fetchNotice}
+              hasPreviewMedia={!!previewMedia}
               onSelectLens={(lens) => selectLens(lens, facing)}
               onToggleFavorite={() => toggleFavorite(activeLens.id)}
               onOpenExplore={() => setIsExploreVisible(true)}
+              onOpenPreview={() => setIsPreviewVisible(true)}
               onFetchMore={fetchMoreLenses}
               onRecordPress={handleRecordPress}
+              onTogglePause={handleTogglePause}
               onHoldStart={handleStartVideo}
               onHoldEnd={handleStopVideo}
             />
-
-            {/* Floating Last Recorded Clip Pill (only shown when a video was captured) */}
-            {previewMedia && !isRecording && (
-              <TouchableOpacity
-                style={[
-                  styles.lastVideoFloatingBtn,
-                  { bottom: Math.max(insets.bottom, 20) + 22 },
-                ]}
-                onPress={() => setIsPreviewVisible(true)}
-                activeOpacity={0.8}
-                accessibilityLabel="Replay last recorded video"
-              >
-                <Ionicons name="play-circle" size={22} color={Colors.accentYellow} />
-                <Text style={styles.lastVideoText}>Last Clip</Text>
-              </TouchableOpacity>
-            )}
           </View>
         </View>
       </View>
@@ -404,23 +391,5 @@ const styles = StyleSheet.create({
     right: 0,
     zIndex: 30,
     alignItems: 'center',
-  },
-  lastVideoFloatingBtn: {
-    position: 'absolute',
-    left: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(12, 12, 16, 0.68)',
-    paddingHorizontal: 11,
-    paddingVertical: 7,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(250, 204, 21, 0.45)',
-    gap: 5,
-  },
-  lastVideoText: {
-    color: Colors.white,
-    fontSize: 11,
-    fontWeight: '700',
   },
 });

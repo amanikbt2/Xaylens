@@ -28,15 +28,15 @@ export const LensSquareCard: React.FC<LensSquareCardProps> = ({
 }) => {
   const iconName = (lens.iconName || 'sparkles-outline') as keyof typeof Ionicons.glyphMap;
 
-  const numMatch = lens.name.match(/^(\d{2})\./);
-  const numberTag = numMatch ? numMatch[1] : null;
+  const codeMatch = lens.name.match(/^(L\d+|\d+)\./);
+  const codeTag = lens.code || (codeMatch ? (codeMatch[1].startsWith('L') ? codeMatch[1] : `L${codeMatch[1]}`) : null);
 
   return (
     <TouchableOpacity
       style={[
         styles.card,
         {
-          borderColor: isSelected ? lens.accentColor : 'rgba(255, 255, 255, 0.12)',
+          borderColor: isSelected ? lens.accentColor : '#e2e8f0',
           borderWidth: isSelected ? 2.5 : 1,
         },
       ]}
@@ -51,12 +51,12 @@ export const LensSquareCard: React.FC<LensSquareCardProps> = ({
         ]}
       />
 
-      {/* Top Bar inside Card: Number Badge & Category Pill & Bookmark Icon */}
+      {/* Top Bar inside Card: Code Badge & Category Pill & Bookmark Icon */}
       <View style={styles.topBar}>
         <View style={styles.topLeftBadges}>
-          {numberTag && (
+          {codeTag && (
             <View style={styles.numberBadge}>
-              <Text style={styles.numberText}>#{numberTag}</Text>
+              <Text style={styles.numberText}>{codeTag}</Text>
             </View>
           )}
           <View style={[styles.categoryPill, { borderColor: lens.accentColor }]}>
@@ -122,12 +122,12 @@ const styles = StyleSheet.create({
     aspectRatio: 1,
     margin: 6,
     borderRadius: 18,
-    backgroundColor: '#16161e',
+    backgroundColor: '#ffffff',
     padding: 10,
     justifyContent: 'space-between',
     position: 'relative',
     overflow: 'hidden',
-    ...createShadow('#000000', { width: 0, height: 4 }, 0.3, 6, 4),
+    ...createShadow('#000000', { width: 0, height: 2 }, 0.08, 4, 2),
   },
   glowBg: {
     ...StyleSheet.absoluteFill,
@@ -160,11 +160,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 8,
-    backgroundColor: 'rgba(0, 0, 0, 0.45)',
+    backgroundColor: '#f1f5f9',
     borderWidth: 1,
+    borderColor: '#e2e8f0',
   },
   categoryText: {
-    color: 'rgba(255, 255, 255, 0.85)',
+    color: '#475569',
     fontSize: 9,
     fontWeight: '700',
     textTransform: 'uppercase',
@@ -173,7 +174,7 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: 'rgba(0, 0, 0, 0.45)',
+    backgroundColor: '#f1f5f9',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -189,14 +190,14 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     justifyContent: 'center',
     alignItems: 'center',
-    ...createShadow('#000000', { width: 0, height: 2 }, 0.3, 4, 3),
+    ...createShadow('#000000', { width: 0, height: 2 }, 0.1, 4, 3),
   },
   bottomSection: {
     alignItems: 'center',
     zIndex: 2,
   },
   lensName: {
-    color: Colors.white,
+    color: '#09090b',
     fontSize: 12,
     fontWeight: '700',
     textAlign: 'center',

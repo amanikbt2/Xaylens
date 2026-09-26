@@ -80,13 +80,7 @@ export const LensItem: React.FC<LensItemProps> = React.memo(
             </View>
           ) : (
             /* UNIFORM LENS BUBBLE: Sits perfectly centered under the fixed Snapchat shutter ring */
-            <View
-              style={[
-                styles.avatarWrapper,
-                isSelected && styles.avatarWrapperSelected,
-                !isSelected && lens.accentColor && { borderColor: 'rgba(255, 255, 255, 0.45)' },
-              ]}
-            >
+            <View style={styles.avatarWrapper}>
               <LensAvatar
                 lensId={lens.id}
                 size={isSelected ? 54 : 46}
@@ -121,14 +115,10 @@ const styles = StyleSheet.create({
     borderRadius: 27,
     overflow: 'hidden',
     borderWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.5)',
+    borderColor: 'rgba(255, 255, 255, 0.35)',
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#09090b',
-  },
-  avatarWrapperSelected: {
-    borderColor: '#ffffff',
-    borderWidth: 2,
   },
   recordingCenterCore: {
     width: 58,

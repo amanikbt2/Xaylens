@@ -16,6 +16,7 @@ import { Lens } from '../types/lens';
 import { LensItem, LENS_ITEM_WIDTH } from './LensItem';
 import { Colors } from '../constants/colors';
 import { triggerLensSelectHaptic } from '../utils/haptics';
+import { createShadow, createTextShadow } from '../utils/styles';
 
 interface LensCarouselProps {
   lenses: Lens[];
@@ -27,11 +28,13 @@ interface LensCarouselProps {
   hasMore?: boolean;
   isFetchingMore?: boolean;
   fetchNotice?: string | null;
+  hasPreviewMedia?: boolean;
   onSelectLens: (lens: Lens) => void;
   onRecordPress: () => void;
   onTogglePause?: () => void;
   onToggleFavorite?: () => void;
   onOpenExplore?: () => void;
+  onOpenPreview?: () => void;
   onFetchMore?: () => void;
   onHoldStart?: () => void;
   onHoldEnd?: () => void;
@@ -60,11 +63,13 @@ export const LensCarousel: React.FC<LensCarouselProps> = ({
   hasMore = false,
   isFetchingMore = false,
   fetchNotice = null,
+  hasPreviewMedia = false,
   onSelectLens,
   onRecordPress,
   onTogglePause,
   onToggleFavorite,
   onOpenExplore,
+  onOpenPreview,
   onFetchMore,
 }) => {
   const flatListRef = useRef<FlatList<Lens>>(null);
@@ -79,6 +84,8 @@ export const LensCarousel: React.FC<LensCarouselProps> = ({
   const isUserDraggingRef = useRef(false);
   const currentScrollOffsetRef = useRef(0);
   const lastHapticIndexRef = useRef(-1);
+  const isProgrammaticScrollRef = useRef(false);
+  const programmaticTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Append Explore Lenses launcher circle to carousel data
   const carouselData = useMemo(() => {
@@ -93,6 +100,13 @@ export const LensCarousel: React.FC<LensCarouselProps> = ({
     (index: number, animated = true) => {
       if (index < 0 || index >= carouselData.length || !flatListRef.current) return;
       try {
+        if (animated) {
+          isProgrammaticScrollRef.current = true;
+          if (programmaticTimerRef.current) clearTimeout(programmaticTimerRef.current);
+          programmaticTimerRef.current = setTimeout(() => {
+            isProgrammaticScrollRef.current = false;
+          }, 350);
+        }
         flatListRef.current.scrollToOffset({
           offset: index * LENS_ITEM_WIDTH,
           animated,
@@ -104,14 +118,14 @@ export const LensCarousel: React.FC<LensCarouselProps> = ({
     [carouselData.length]
   );
 
-  // Re-center active lens whenever activeLens or containerWidth changes (if user is not dragging)
+  // Re-center active lens whenever activeLens or containerWidth changes (if user is not dragging or programmatically animating)
   useEffect(() => {
-    if (isUserDraggingRef.current || isRecording) return;
+    if (isUserDraggingRef.current || isProgrammaticScrollRef.current || isRecording) return;
     const index = carouselData.findIndex((l) => l.id === activeLens.id);
     if (index !== -1) {
       scrollToLensIndex(index, true);
     }
-  }, [activeLens.id, carouselData, isRecording, scrollToLensIndex]);
+  }, [activeLens.id, carouselData, isRecording, containerWidth, scrollToLensIndex]);
 
   const handleLayout = useCallback((e: LayoutChangeEvent) => {
     const width = e.nativeEvent.layout.width;
@@ -311,6 +325,30 @@ export const LensCarousel: React.FC<LensCarouselProps> = ({
 
           {/* SLEEK FROSTED GLASS CAROUSEL TRACK */}
           <View style={styles.glassCarouselTrack}>
+            {/* PERMANENT FIXED CENTRAL SNAPCHAT SHUTTER RING OVERLAY */}
+            <View style={styles.fixedCenterRingOverlay} pointerEvents="none">
+              <View
+                style={[
+                  styles.fixedShutterRing,
+                  {
+                    borderColor: isRecording ? '#ef4444' : '#facc15',
+                  },
+                ]}
+              >
+                {/* Inner Grooved Accent Ring */}
+                <View
+                  style={[
+                    styles.fixedInnerGrooveRing,
+                    {
+                      borderColor: isRecording
+                        ? 'rgba(255, 255, 255, 0.45)'
+                        : 'rgba(250, 204, 21, 0.45)',
+                    },
+                  ]}
+                />
+              </View>
+            </View>
+
             {/* Subtle Web / Desktop Left Arrow */}
             {Platform.OS === 'web' && (
               <TouchableOpacity
@@ -330,13 +368,13 @@ export const LensCarousel: React.FC<LensCarouselProps> = ({
               renderItem={renderItem}
               horizontal
               showsHorizontalScrollIndicator={false}
-              contentContainerStyle={[
-                styles.flatListContent,
-                {
-                  paddingLeft: sideSpacerWidth,
-                  paddingRight: sideSpacerWidth,
-                },
-              ]}
+              ListHeaderComponent={
+                <View style={{ width: sideSpacerWidth, height: LENS_ITEM_WIDTH }} />
+              }
+              ListFooterComponent={
+                <View style={{ width: sideSpacerWidth, height: LENS_ITEM_WIDTH }} />
+              }
+              contentContainerStyle={styles.flatListContent}
               snapToInterval={LENS_ITEM_WIDTH}
               snapToAlignment="center"
               decelerationRate="fast"
@@ -353,7 +391,11 @@ export const LensCarousel: React.FC<LensCarouselProps> = ({
                 offset: LENS_ITEM_WIDTH * index,
                 index,
               })}
-              onScrollToIndexFailed={() => {}}
+              onScrollToIndexFailed={(info) => {
+                setTimeout(() => {
+                  scrollToLensIndex(info.index, false);
+                }, 100);
+              }}
               initialNumToRender={15}
               maxToRenderPerBatch={12}
               windowSize={11}
@@ -372,7 +414,14 @@ export const LensCarousel: React.FC<LensCarouselProps> = ({
             )}
           </View>
 
-          {/* LOWER BAR: Bookmark & Explore Buttons neatly organized BELOW the carousel */}
+          {/* CENTERED ACTIVE LENS TITLE BADGE */}
+          <View style={styles.activeLensTitleBadge} pointerEvents="none">
+            <Text style={styles.activeLensTitleText} numberOfLines={1}>
+              {activeLens.name}
+            </Text>
+          </View>
+
+          {/* LOWER BAR: Bookmark on Left, Last Clip in Center (if available), Explore on Right */}
           <View style={styles.lowerBar}>
             {onToggleFavorite ? (
               <TouchableOpacity
@@ -402,9 +451,20 @@ export const LensCarousel: React.FC<LensCarouselProps> = ({
               <View style={{ width: 70 }} />
             )}
 
-            <Text style={styles.lowerInstructionHint}>
-              {hasMore ? 'Swipe right for more lenses' : 'Swipe lenses or tap circle'}
-            </Text>
+            {/* Center: Last Clip button (if a video clip was recorded) */}
+            {hasPreviewMedia && onOpenPreview ? (
+              <TouchableOpacity
+                style={styles.lastClipBtn}
+                onPress={onOpenPreview}
+                activeOpacity={0.8}
+                accessibilityLabel="Replay last recorded video"
+              >
+                <Ionicons name="play-circle" size={18} color={Colors.accentYellow} />
+                <Text style={styles.lastClipBtnText}>Last Clip</Text>
+              </TouchableOpacity>
+            ) : (
+              <View style={{ flex: 1 }} />
+            )}
 
             {onOpenExplore ? (
               <TouchableOpacity
@@ -547,6 +607,55 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderBottomWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.1)',
+    position: 'relative',
+  },
+  fixedCenterRingOverlay: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    left: 0,
+    right: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
+  },
+  fixedShutterRing: {
+    width: 76,
+    height: 76,
+    borderRadius: 38,
+    borderWidth: 4,
+    borderColor: '#facc15',
+    backgroundColor: 'transparent',
+    justifyContent: 'center',
+    alignItems: 'center',
+    ...createShadow('#facc15', { width: 0, height: 0 }, 0.65, 10, 8),
+  },
+  fixedInnerGrooveRing: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    borderWidth: 1.5,
+    borderStyle: 'dashed',
+    borderColor: 'rgba(250, 204, 21, 0.45)',
+  },
+  activeLensTitleBadge: {
+    marginTop: 6,
+    marginBottom: 2,
+    paddingHorizontal: 14,
+    paddingVertical: 4,
+    backgroundColor: 'rgba(0, 0, 0, 0.55)',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(250, 204, 21, 0.35)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  activeLensTitleText: {
+    color: '#ffffff',
+    fontSize: 12,
+    fontWeight: '800',
+    letterSpacing: 0.4,
+    ...createTextShadow('rgba(0, 0, 0, 0.9)', { width: 0, height: 1 }, 2),
   },
   webArrowBtn: {
     position: 'absolute',
@@ -589,18 +698,31 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255, 255, 255, 0.2)',
     gap: 5,
   },
-  favoriteActiveBtn: {
-    borderColor: 'rgba(250, 204, 21, 0.65)',
-    backgroundColor: 'rgba(250, 204, 21, 0.18)',
-  },
   lowerBtnText: {
     color: Colors.white,
     fontSize: 12,
     fontWeight: '700',
   },
-  lowerInstructionHint: {
-    color: 'rgba(255, 255, 255, 0.55)',
-    fontSize: 11,
-    fontWeight: '600',
+  favoriteActiveBtn: {
+    borderColor: 'rgba(250, 204, 21, 0.65)',
+    backgroundColor: 'rgba(250, 204, 21, 0.18)',
+  },
+  lastClipBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(250, 204, 21, 0.16)',
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: 'rgba(250, 204, 21, 0.5)',
+    gap: 6,
+  },
+  lastClipBtnText: {
+    color: '#ffffff',
+    fontSize: 12,
+    fontWeight: '800',
+    letterSpacing: 0.3,
   },
 });

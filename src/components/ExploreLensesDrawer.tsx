@@ -123,17 +123,17 @@ export const ExploreLensesDrawer: React.FC<ExploreLensesDrawerProps> = ({
               hitSlop={10}
               accessibilityLabel="Close Explore Lenses drawer"
             >
-              <Ionicons name="close" size={20} color={Colors.white} />
+              <Ionicons name="close" size={20} color="#09090b" />
             </TouchableOpacity>
           </View>
 
           {/* Search Bar */}
           <View style={styles.searchBarWrapper}>
-            <Ionicons name="search" size={18} color="rgba(255, 255, 255, 0.45)" />
+            <Ionicons name="search" size={18} color="#64748b" />
             <TextInput
               style={styles.searchInput}
               placeholder="Search lenses (e.g. alien, puppy, eyes...)"
-              placeholderTextColor="rgba(255, 255, 255, 0.45)"
+              placeholderTextColor="#94a3b8"
               value={searchQuery}
               onChangeText={setSearchQuery}
               autoCorrect={false}
@@ -141,7 +141,7 @@ export const ExploreLensesDrawer: React.FC<ExploreLensesDrawerProps> = ({
             />
             {searchQuery.length > 0 && Platform.OS !== 'ios' && (
               <TouchableOpacity onPress={() => setSearchQuery('')}>
-                <Ionicons name="close-circle" size={18} color="rgba(255, 255, 255, 0.6)" />
+                <Ionicons name="close-circle" size={18} color="#64748b" />
               </TouchableOpacity>
             )}
           </View>
@@ -245,11 +245,11 @@ const styles = StyleSheet.create({
   sheetContainer: {
     maxHeight: '82%',
     minHeight: '60%',
-    backgroundColor: '#0d0d12',
+    backgroundColor: '#ffffff',
     borderTopLeftRadius: 26,
     borderTopRightRadius: 26,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.12)',
+    borderColor: '#e2e8f0',
     overflow: 'hidden',
   },
   dragHandleContainer: {
@@ -262,7 +262,7 @@ const styles = StyleSheet.create({
     width: 38,
     height: 4,
     borderRadius: 2,
-    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+    backgroundColor: '#cbd5e1',
   },
   header: {
     flexDirection: 'row',
@@ -277,7 +277,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   headerTitle: {
-    color: Colors.white,
+    color: '#09090b',
     fontSize: 18,
     fontWeight: '800',
     letterSpacing: 0.3,
@@ -299,26 +299,26 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: '#f1f5f9',
     justifyContent: 'center',
     alignItems: 'center',
   },
   searchBarWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    backgroundColor: '#f1f5f9',
     marginHorizontal: 16,
     marginBottom: 10,
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
+    borderColor: '#e2e8f0',
     gap: 8,
   },
   searchInput: {
     flex: 1,
-    color: Colors.white,
+    color: '#09090b',
     fontSize: 14,
     padding: 0,
   },
@@ -333,21 +333,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 7,
     borderRadius: 18,
-    backgroundColor: 'rgba(255, 255, 255, 0.07)',
+    backgroundColor: '#f1f5f9',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
+    borderColor: '#e2e8f0',
   },
   tabPillSelected: {
     backgroundColor: Colors.accentYellow,
     borderColor: Colors.accentYellow,
   },
   tabText: {
-    color: 'rgba(255, 255, 255, 0.75)',
+    color: '#475569',
     fontSize: 12,
     fontWeight: '700',
   },
   tabTextSelected: {
-    color: Colors.black,
+    color: '#09090b',
   },
   gridContent: {
     paddingHorizontal: 10,
@@ -363,14 +363,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
   },
   emptyTitle: {
-    color: Colors.white,
+    color: '#09090b',
     fontSize: 16,
     fontWeight: '700',
     marginTop: 12,
     marginBottom: 6,
   },
   emptyText: {
-    color: 'rgba(255, 255, 255, 0.55)',
+    color: '#64748b',
     fontSize: 13,
     textAlign: 'center',
     lineHeight: 18,
