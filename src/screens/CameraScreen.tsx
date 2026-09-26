@@ -24,6 +24,7 @@ import { useCamera } from '../hooks/useCamera';
 import { useLens } from '../hooks/useLens';
 import { useRecording } from '../hooks/useRecording';
 import { usePermissions } from '../hooks/usePermissions';
+import { useFaceStatus } from '../hooks/useFaceStatus';
 import { Colors } from '../constants/colors';
 import { CapturedMedia } from '../types/camera';
 
@@ -44,13 +45,21 @@ export const CameraScreen: React.FC = () => {
 
   const {
     lenses,
+    allLenses,
     activeLens,
     selectLens,
+    injectAndSelectLens,
+    hasMore,
+    isFetchingMore,
+    fetchMoreLenses,
     lensNotice,
+    fetchNotice,
     favoriteIds,
     toggleFavorite,
     isFavorite,
   } = useLens('normal');
+
+  const { status: faceStatus } = useFaceStatus(facing, activeLens.id);
 
   const [previewMedia, setPreviewMedia] = useState<CapturedMedia | null>(null);
   const [isPreviewVisible, setIsPreviewVisible] = useState(false);
@@ -128,6 +137,8 @@ export const CameraScreen: React.FC = () => {
             );
             if (lenses[nextIdx] && nextIdx !== activeLensIndexRef.current) {
               selectLens(lenses[nextIdx], facing);
+            } else if (hasMore) {
+              fetchMoreLenses();
             }
           } else if (gestureState.dx > 40) {
             // Swipe Right -> Previous Lens
@@ -138,7 +149,7 @@ export const CameraScreen: React.FC = () => {
           }
         },
       }),
-    [lenses, selectLens, facing]
+    [lenses, selectLens, facing, hasMore, fetchMoreLenses]
   );
 
   // 1. Loading state
@@ -202,6 +213,7 @@ export const CameraScreen: React.FC = () => {
               onToggleFacing={toggleFacing}
               onOpenSettings={() => setIsSettingsVisible(true)}
               isRecording={isRecording}
+              faceStatus={faceStatus}
             />
 
             {/* Video Recording Timer Pill */}
@@ -238,9 +250,13 @@ export const CameraScreen: React.FC = () => {
               isRecording={isRecording}
               formattedTime={formattedTime}
               isFavorite={isFavorite(activeLens.id)}
+              hasMore={hasMore}
+              isFetchingMore={isFetchingMore}
+              fetchNotice={fetchNotice}
               onSelectLens={(lens) => selectLens(lens, facing)}
               onToggleFavorite={() => toggleFavorite(activeLens.id)}
               onOpenExplore={() => setIsExploreVisible(true)}
+              onFetchMore={fetchMoreLenses}
               onRecordPress={handleRecordPress}
               onHoldStart={handleStartVideo}
               onHoldEnd={handleStopVideo}
@@ -281,10 +297,10 @@ export const CameraScreen: React.FC = () => {
       {/* Explore Lenses Bottom Drawer */}
       <ExploreLensesDrawer
         visible={isExploreVisible}
-        lenses={lenses}
+        lenses={allLenses}
         activeLens={activeLens}
         favoriteIds={favoriteIds}
-        onSelectLens={(lens) => selectLens(lens, facing)}
+        onSelectLens={(lens) => injectAndSelectLens(lens, facing)}
         onToggleFavorite={toggleFavorite}
         onClose={() => setIsExploreVisible(false)}
       />

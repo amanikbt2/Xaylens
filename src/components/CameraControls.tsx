@@ -4,6 +4,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../constants/colors';
 import { FlashMode } from '../types/camera';
 import { BrandBadge } from './BrandBadge';
+import { FaceStatusBadge } from './FaceStatusBadge';
+import { FaceStatus } from '../hooks/useFaceStatus';
 
 interface CameraControlsProps {
   flash: FlashMode;
@@ -11,6 +13,7 @@ interface CameraControlsProps {
   onToggleFacing: () => void;
   onOpenSettings: () => void;
   isRecording?: boolean;
+  faceStatus?: FaceStatus;
 }
 
 export const CameraControls: React.FC<CameraControlsProps> = ({
@@ -19,6 +22,7 @@ export const CameraControls: React.FC<CameraControlsProps> = ({
   onToggleFacing,
   onOpenSettings,
   isRecording = false,
+  faceStatus,
 }) => {
   const getFlashIcon = () => {
     switch (flash) {
@@ -38,8 +42,11 @@ export const CameraControls: React.FC<CameraControlsProps> = ({
 
   return (
     <View style={styles.container} pointerEvents="box-none">
-      {/* Top-Left: Subtle XayLens Floating Badge */}
-      <BrandBadge />
+      {/* Top-Left: XayLens Title + Live Face Status Pill */}
+      <View style={styles.leftBrandWrapper}>
+        <BrandBadge />
+        {faceStatus && !isRecording && <FaceStatusBadge status={faceStatus} />}
+      </View>
 
       {/* Top-Right: Snapchat-style vertical floating glass pill */}
       <View style={styles.rightVerticalPill}>
@@ -99,6 +106,9 @@ const styles = StyleSheet.create({
     paddingTop: 8,
     width: '100%',
     zIndex: 20,
+  },
+  leftBrandWrapper: {
+    alignItems: 'flex-start',
   },
   rightVerticalPill: {
     backgroundColor: 'rgba(12, 12, 16, 0.52)',

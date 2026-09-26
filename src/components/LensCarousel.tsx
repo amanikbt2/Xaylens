@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState, useCallback } from 'react';
+import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react';
 import {
   View,
   StyleSheet,
@@ -23,13 +23,30 @@ interface LensCarouselProps {
   isRecording: boolean;
   formattedTime?: string;
   isFavorite?: boolean;
+  hasMore?: boolean;
+  isFetchingMore?: boolean;
+  fetchNotice?: string | null;
   onSelectLens: (lens: Lens) => void;
   onRecordPress: () => void;
   onToggleFavorite?: () => void;
   onOpenExplore?: () => void;
+  onFetchMore?: () => void;
   onHoldStart?: () => void;
   onHoldEnd?: () => void;
 }
+
+// Special Snapchat-style Explore launcher circle at the end of the carousel
+const EXPLORE_CAROUSEL_ITEM: Lens = {
+  id: 'explore-more',
+  name: 'Explore',
+  category: 'style',
+  description: 'Search & explore all 50+ lenses in library',
+  supportedCamera: 'both',
+  effectType: 'color_filter',
+  iconName: 'sparkles',
+  accentColor: '#facc15',
+  config: {},
+};
 
 export const LensCarousel: React.FC<LensCarouselProps> = ({
   lenses,
@@ -37,10 +54,14 @@ export const LensCarousel: React.FC<LensCarouselProps> = ({
   isRecording,
   formattedTime = '00:00',
   isFavorite = false,
+  hasMore = false,
+  isFetchingMore = false,
+  fetchNotice = null,
   onSelectLens,
   onRecordPress,
   onToggleFavorite,
   onOpenExplore,
+  onFetchMore,
 }) => {
   const flatListRef = useRef<FlatList<Lens>>(null);
   const defaultWidth =
@@ -58,10 +79,18 @@ export const LensCarousel: React.FC<LensCarouselProps> = ({
   );
   const lastIndexRef = useRef(activeIndex);
 
-  // Smooth helper to scroll FlatList so the active lens is centered
+  // Append Explore Lenses launcher circle to carousel data
+  const carouselData = useMemo(() => {
+    if (onOpenExplore) {
+      return [...lenses, EXPLORE_CAROUSEL_ITEM];
+    }
+    return lenses;
+  }, [lenses, onOpenExplore]);
+
+  // Smooth helper to scroll FlatList so the target index is centered
   const scrollToLensIndex = useCallback(
     (index: number, animated = true) => {
-      if (index < 0 || index >= lenses.length || !flatListRef.current) return;
+      if (index < 0 || index >= carouselData.length || !flatListRef.current) return;
       try {
         flatListRef.current.scrollToOffset({
           offset: index * LENS_ITEM_WIDTH,
@@ -71,7 +100,7 @@ export const LensCarousel: React.FC<LensCarouselProps> = ({
         // Ignore layout timing
       }
     },
-    [lenses.length]
+    [carouselData.length]
   );
 
   // Re-center active lens whenever activeLens or containerWidth changes
@@ -97,15 +126,23 @@ export const LensCarousel: React.FC<LensCarouselProps> = ({
       const offsetX = e.nativeEvent.contentOffset.x;
       const centerIdx = Math.max(
         0,
-        Math.min(lenses.length - 1, Math.round(offsetX / LENS_ITEM_WIDTH))
+        Math.min(carouselData.length - 1, Math.round(offsetX / LENS_ITEM_WIDTH))
       );
-      if (centerIdx !== lastIndexRef.current && lenses[centerIdx]) {
+      const targetItem = carouselData[centerIdx];
+      if (centerIdx !== lastIndexRef.current && targetItem) {
         lastIndexRef.current = centerIdx;
-        triggerLensSelectHaptic();
-        onSelectLens(lenses[centerIdx]);
+        if (targetItem.id === 'explore-more') {
+          if (onOpenExplore) {
+            triggerLensSelectHaptic();
+            onOpenExplore();
+          }
+        } else {
+          triggerLensSelectHaptic();
+          onSelectLens(targetItem);
+        }
       }
     },
-    [lenses, onSelectLens]
+    [carouselData, onOpenExplore, onSelectLens]
   );
 
   const handleScrollBeginDrag = useCallback(() => {
@@ -117,44 +154,65 @@ export const LensCarousel: React.FC<LensCarouselProps> = ({
       const offsetX = e.nativeEvent.contentOffset.x;
       const centerIdx = Math.max(
         0,
-        Math.min(lenses.length - 1, Math.round(offsetX / LENS_ITEM_WIDTH))
+        Math.min(carouselData.length - 1, Math.round(offsetX / LENS_ITEM_WIDTH))
       );
       isUserDraggingRef.current = false;
       scrollToLensIndex(centerIdx, true);
-      if (lenses[centerIdx]) {
+      const targetItem = carouselData[centerIdx];
+      if (targetItem) {
         lastIndexRef.current = centerIdx;
-        if (lenses[centerIdx].id !== activeLens.id) {
+        if (targetItem.id === 'explore-more') {
+          if (onOpenExplore) {
+            triggerLensSelectHaptic();
+            onOpenExplore();
+          }
+        } else if (targetItem.id !== activeLens.id) {
           triggerLensSelectHaptic();
-          onSelectLens(lenses[centerIdx]);
+          onSelectLens(targetItem);
         }
       }
     },
-    [activeLens.id, lenses, onSelectLens, scrollToLensIndex]
+    [activeLens.id, carouselData, onOpenExplore, onSelectLens, scrollToLensIndex]
   );
 
-  const handleTapSideLens = useCallback(
-    (lens: Lens) => {
+  const handleTapLens = useCallback(
+    (item: Lens) => {
+      if (item.id === 'explore-more') {
+        if (onOpenExplore) {
+          triggerLensSelectHaptic();
+          onOpenExplore();
+        }
+        return;
+      }
       isUserDraggingRef.current = false;
-      const idx = lenses.findIndex((l) => l.id === lens.id);
+      const idx = carouselData.findIndex((l) => l.id === item.id);
       if (idx !== -1) {
         lastIndexRef.current = idx;
         triggerLensSelectHaptic();
         scrollToLensIndex(idx, true);
-        onSelectLens(lens);
+        onSelectLens(item);
       }
     },
-    [lenses, onSelectLens, scrollToLensIndex]
+    [carouselData, onOpenExplore, onSelectLens, scrollToLensIndex]
   );
 
+  // Swipe for more: dynamically fetch next batch of lenses from Explore
+  const handleEndReached = useCallback(() => {
+    if (onFetchMore && hasMore && !isFetchingMore) {
+      onFetchMore();
+    }
+  }, [hasMore, isFetchingMore, onFetchMore]);
+
   const renderItem = ({ item, index }: { item: Lens; index: number }) => {
+    const isSelected = item.id === activeLens.id;
     const distanceFromCenter = Math.abs(index - activeIndex);
     return (
       <LensItem
         lens={item}
-        isSelected={item.id === activeLens.id}
+        isSelected={isSelected}
         isRecording={isRecording}
         distanceFromCenter={distanceFromCenter}
-        onSelect={handleTapSideLens}
+        onSelect={handleTapLens}
         onRecordPress={onRecordPress}
       />
     );
@@ -172,11 +230,18 @@ export const LensCarousel: React.FC<LensCarouselProps> = ({
         </View>
       )}
 
-      {/* SLEEK FROSTED GLASS CAROUSEL TRACK (matching user screenshot media_1790400374579.png) */}
+      {/* Subtle Floating "Loaded Lenses from Explore" Toast Indicator */}
+      {fetchNotice && !isRecording && (
+        <View style={styles.fetchNoticeBadge}>
+          <Text style={styles.fetchNoticeText}>{fetchNotice}</Text>
+        </View>
+      )}
+
+      {/* SLEEK FROSTED GLASS CAROUSEL TRACK (matching user screenshot) */}
       <View style={styles.glassCarouselTrack}>
         <FlatList
           ref={flatListRef}
-          data={lenses}
+          data={carouselData}
           keyExtractor={(item) => item.id}
           renderItem={renderItem}
           horizontal
@@ -195,15 +260,17 @@ export const LensCarousel: React.FC<LensCarouselProps> = ({
           onScroll={handleScroll}
           onMomentumScrollEnd={handleScrollEnd}
           onScrollEndDrag={handleScrollEnd}
+          onEndReached={handleEndReached}
+          onEndReachedThreshold={0.4}
           getItemLayout={(_, index) => ({
             length: LENS_ITEM_WIDTH,
             offset: LENS_ITEM_WIDTH * index,
             index,
           })}
           onScrollToIndexFailed={() => {}}
-          initialNumToRender={11}
-          maxToRenderPerBatch={11}
-          windowSize={9}
+          initialNumToRender={14}
+          maxToRenderPerBatch={12}
+          windowSize={11}
         />
       </View>
 
@@ -240,7 +307,11 @@ export const LensCarousel: React.FC<LensCarouselProps> = ({
         )}
 
         <Text style={styles.lowerInstructionHint}>
-          {isRecording ? 'Recording video...' : 'Swipe lenses or tap circle'}
+          {isRecording
+            ? 'Recording video...'
+            : hasMore
+            ? 'Swipe right for more lenses'
+            : 'Swipe lenses or tap circle'}
         </Text>
 
         {onOpenExplore ? (
@@ -299,6 +370,27 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '800',
     letterSpacing: 0.3,
+  },
+  fetchNoticeBadge: {
+    position: 'absolute',
+    top: -30,
+    backgroundColor: 'rgba(15, 23, 42, 0.94)',
+    paddingHorizontal: 14,
+    paddingVertical: 5,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(250, 204, 21, 0.55)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.45,
+    shadowRadius: 5,
+    elevation: 6,
+    zIndex: 99,
+  },
+  fetchNoticeText: {
+    color: Colors.accentYellow,
+    fontSize: 12,
+    fontWeight: '700',
   },
   glassCarouselTrack: {
     width: '100%',

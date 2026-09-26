@@ -24,6 +24,10 @@ export const LensItem: React.FC<LensItemProps> = React.memo(
     onRecordPress,
   }) => {
     const handlePress = () => {
+      if (lens.id === 'explore-more') {
+        onSelect(lens);
+        return;
+      }
       if (isSelected) {
         triggerShutterPressHaptic();
         onRecordPress();
@@ -46,7 +50,9 @@ export const LensItem: React.FC<LensItemProps> = React.memo(
           onPress={handlePress}
           activeOpacity={0.85}
           accessibilityLabel={
-            isSelected
+            lens.id === 'explore-more'
+              ? 'Explore all lenses'
+              : isSelected
               ? isRecording
                 ? 'Stop recording and edit video'
                 : `Start recording with ${lens.name}`
