@@ -68,7 +68,7 @@ export const LensCarousel: React.FC<LensCarouselProps> = ({
       loop = Animated.loop(
         Animated.sequence([
           Animated.timing(ringPulseAnim, {
-            toValue: 1.1,
+            toValue: 1.08,
             duration: 500,
             useNativeDriver: true,
           }),
@@ -88,7 +88,7 @@ export const LensCarousel: React.FC<LensCarouselProps> = ({
     };
   }, [isRecording, ringPulseAnim]);
 
-  // Scroll FlatList so the target lens index sits DEAD-CENTER inside the Big Circle
+  // Scroll FlatList so the target lens sits dead-center inside the glowing ring
   const scrollToLensIndex = useCallback(
     (index: number, animated = true) => {
       if (index < 0 || index >= lenses.length || !flatListRef.current) return;
@@ -98,13 +98,13 @@ export const LensCarousel: React.FC<LensCarouselProps> = ({
           animated,
         });
       } catch {
-        // Ignore transient layout timing
+        // Ignore layout race
       }
     },
     [lenses.length]
   );
 
-  // Re-center active lens inside the Big Circle whenever activeLens or containerWidth changes
+  // Re-center active lens whenever activeLens or containerWidth changes
   useEffect(() => {
     const index = lenses.findIndex((l) => l.id === activeLens.id);
     if (index !== -1) {
@@ -194,34 +194,24 @@ export const LensCarousel: React.FC<LensCarouselProps> = ({
     );
   };
 
-  const outerRingColor = isRecording
+  const glowRingColor = isRecording
     ? '#ef4444'
-    : activeLens.id === 'normal'
-    ? Colors.white
-    : activeLens.accentColor;
+    : activeLens.accentColor || '#38bdf8';
 
   return (
     <View style={styles.container} onLayout={handleLayout}>
-      {/* ROW 1: Active Lens Pill OR Live Red Recording Timer Pill */}
-      <View
-        style={[
-          styles.labelPill,
-          isRecording && styles.recordingActivePill,
-        ]}
-        pointerEvents="none"
-      >
-        {isRecording && <View style={styles.recordingRedDot} />}
-        <Text style={styles.lensTitle}>
-          {isRecording
-            ? `REC ${formattedTime} • Tap Circle to Stop`
-            : activeLens.id === 'normal'
-            ? 'Natural • Tap Circle to Record'
-            : activeLens.name}
-        </Text>
-      </View>
+      {/* Live Red Recording Timer Banner (shown when recording) */}
+      {isRecording && (
+        <View style={styles.recordingBanner}>
+          <View style={styles.recordingRedDot} />
+          <Text style={styles.recordingBannerText}>
+            REC {formattedTime} • Tap circle to stop & edit
+          </Text>
+        </View>
+      )}
 
-      {/* ROW 2: Pure Horizontal Lens Track with Current Lens Centered INSIDE the Big Circle */}
-      <View style={styles.trackWrapper}>
+      {/* SLEEK FROSTED GLASS CAROUSEL TRACK (matching user screenshot media_1790399392414.png) */}
+      <View style={styles.glassCarouselTrack}>
         <FlatList
           ref={flatListRef}
           data={lenses}
@@ -250,33 +240,32 @@ export const LensCarousel: React.FC<LensCarouselProps> = ({
           windowSize={7}
         />
 
-        {/* Fixed Center Big Circle Ring surrounding the active lens */}
-        <View style={styles.centerRingOverlay} pointerEvents="none">
+        {/* GLOWING NEON SHUTTER TARGET RING AROUND ACTIVE CENTER AVATAR */}
+        <View style={styles.centerTargetRingOverlay} pointerEvents="none">
           <Animated.View
             style={[
-              styles.bigShutterRing,
+              styles.neonShutterRing,
               {
-                borderColor: outerRingColor,
-                backgroundColor: isRecording
-                  ? 'rgba(239, 68, 68, 0.18)'
-                  : 'transparent',
+                borderColor: glowRingColor,
+                shadowColor: glowRingColor,
                 transform: [{ scale: ringPulseAnim }],
-                shadowColor: outerRingColor,
+                backgroundColor: isRecording
+                  ? 'rgba(239, 68, 68, 0.22)'
+                  : 'transparent',
               },
             ]}
           />
         </View>
       </View>
 
-      {/* ROW 3 (LOWER BAR): Bookmark & Explore Icons cleanly organized BELOW the lenses */}
-      <View style={styles.lowerActionRow}>
-        {/* Left: Bookmark Favorite Lens */}
+      {/* LOWER BAR: Bookmark & Explore Buttons neatly organized BELOW the carousel */}
+      <View style={styles.lowerBar}>
         {onToggleFavorite ? (
           <TouchableOpacity
             style={[
-              styles.lowerPillBtn,
+              styles.lowerBtn,
               isFavorite && styles.favoriteActiveBtn,
-              isRecording && styles.hiddenWhileRecording,
+              isRecording && styles.dimmedWhileRecording,
             ]}
             disabled={isRecording}
             onPress={onToggleFavorite}
@@ -285,12 +274,12 @@ export const LensCarousel: React.FC<LensCarouselProps> = ({
           >
             <Ionicons
               name={isFavorite ? 'bookmark' : 'bookmark-outline'}
-              size={18}
+              size={17}
               color={isFavorite ? Colors.accentYellow : Colors.white}
             />
             <Text
               style={[
-                styles.lowerPillText,
+                styles.lowerBtnText,
                 isFavorite && { color: Colors.accentYellow },
               ]}
             >
@@ -298,20 +287,18 @@ export const LensCarousel: React.FC<LensCarouselProps> = ({
             </Text>
           </TouchableOpacity>
         ) : (
-          <View style={styles.lowerSpacer} />
+          <View style={{ width: 70 }} />
         )}
 
-        {/* Center subtle status hint */}
-        <Text style={styles.lowerCenterHint}>
-          {isRecording ? 'Recording Video...' : 'Swipe Lenses • Tap Center'}
+        <Text style={styles.lowerInstructionHint}>
+          {isRecording ? 'Recording video...' : 'Swipe lenses or tap circle'}
         </Text>
 
-        {/* Right: Explore All Lenses */}
         {onOpenExplore ? (
           <TouchableOpacity
             style={[
-              styles.lowerPillBtn,
-              isRecording && styles.hiddenWhileRecording,
+              styles.lowerBtn,
+              isRecording && styles.dimmedWhileRecording,
             ]}
             disabled={isRecording}
             onPress={onOpenExplore}
@@ -320,13 +307,13 @@ export const LensCarousel: React.FC<LensCarouselProps> = ({
           >
             <Ionicons
               name="sparkles-outline"
-              size={17}
+              size={16}
               color={Colors.accentYellow}
             />
-            <Text style={styles.lowerPillText}>Explore</Text>
+            <Text style={styles.lowerBtnText}>Explore</Text>
           </TouchableOpacity>
         ) : (
-          <View style={styles.lowerSpacer} />
+          <View style={{ width: 70 }} />
         )}
       </View>
     </View>
@@ -338,21 +325,19 @@ const styles = StyleSheet.create({
     width: '100%',
     alignItems: 'center',
   },
-  labelPill: {
+  recordingBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(12, 12, 16, 0.68)',
+    backgroundColor: '#ef4444',
     paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 18,
-    marginBottom: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.18)',
+    paddingVertical: 5,
+    borderRadius: 16,
+    marginBottom: 6,
     gap: 6,
-  },
-  recordingActivePill: {
-    backgroundColor: 'rgba(239, 68, 68, 0.92)',
-    borderColor: '#ffffff',
+    shadowColor: '#ef4444',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.5,
+    shadowRadius: 6,
   },
   recordingRedDot: {
     width: 8,
@@ -360,78 +345,79 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     backgroundColor: '#ffffff',
   },
-  lensTitle: {
-    color: Colors.white,
+  recordingBannerText: {
+    color: '#ffffff',
     fontSize: 12,
     fontWeight: '800',
-    letterSpacing: 0.4,
-    textAlign: 'center',
+    letterSpacing: 0.3,
   },
-  trackWrapper: {
+  glassCarouselTrack: {
     width: '100%',
-    height: 92,
+    height: 104,
+    backgroundColor: 'rgba(5, 5, 10, 0.65)',
     justifyContent: 'center',
     alignItems: 'center',
     position: 'relative',
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
   },
   flatListContent: {
     alignItems: 'center',
   },
-  centerRingOverlay: {
+  centerTargetRingOverlay: {
     position: 'absolute',
     top: 0,
     bottom: 0,
     left: 0,
     right: 0,
-    justifyContent: 'center',
+    justifyContent: 'flex-start',
     alignItems: 'center',
+    paddingTop: 1,
   },
-  bigShutterRing: {
-    width: 86,
-    height: 86,
-    borderRadius: 43,
-    borderWidth: 5,
+  neonShutterRing: {
+    width: 78,
+    height: 78,
+    borderRadius: 39,
+    borderWidth: 3.5,
     shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.75,
-    shadowRadius: 10,
+    shadowOpacity: 0.85,
+    shadowRadius: 14,
   },
-  lowerActionRow: {
+  lowerBar: {
     width: '100%',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    marginTop: 8,
+    paddingTop: 8,
   },
-  lowerPillBtn: {
+  lowerBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(15, 15, 22, 0.78)',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
+    backgroundColor: 'rgba(18, 18, 24, 0.75)',
+    paddingHorizontal: 13,
+    paddingVertical: 7,
+    borderRadius: 18,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.22)',
-    gap: 6,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+    gap: 5,
   },
   favoriteActiveBtn: {
     borderColor: 'rgba(250, 204, 21, 0.65)',
     backgroundColor: 'rgba(250, 204, 21, 0.18)',
   },
-  lowerPillText: {
+  lowerBtnText: {
     color: Colors.white,
     fontSize: 12,
     fontWeight: '700',
   },
-  lowerCenterHint: {
-    color: 'rgba(255, 255, 255, 0.6)',
+  lowerInstructionHint: {
+    color: 'rgba(255, 255, 255, 0.55)',
     fontSize: 11,
     fontWeight: '600',
   },
-  lowerSpacer: {
-    width: 76,
-  },
-  hiddenWhileRecording: {
-    opacity: 0.25,
+  dimmedWhileRecording: {
+    opacity: 0.2,
   },
 });

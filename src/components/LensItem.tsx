@@ -1,11 +1,10 @@
 import React, { useEffect, useRef } from 'react';
-import { StyleSheet, TouchableOpacity, Animated, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { StyleSheet, TouchableOpacity, Animated, View, Text } from 'react-native';
 import { Lens } from '../types/lens';
-import { Colors } from '../constants/colors';
 import { triggerShutterPressHaptic } from '../utils/haptics';
+import { LensAvatar } from './LensAvatar';
 
-export const LENS_ITEM_WIDTH = 86;
+export const LENS_ITEM_WIDTH = 78;
 
 interface LensItemProps {
   lens: Lens;
@@ -28,8 +27,8 @@ export const LensItem: React.FC<LensItemProps> = React.memo(
     const targetScale = isSelected
       ? 1
       : distanceFromCenter === 1
-      ? 0.84
-      : 0.72;
+      ? 0.88
+      : 0.78;
 
     const scaleAnim = useRef(new Animated.Value(targetScale)).current;
 
@@ -51,6 +50,8 @@ export const LensItem: React.FC<LensItemProps> = React.memo(
       }
     };
 
+    const avatarSize = isSelected ? 66 : 52;
+
     return (
       <Animated.View
         style={[
@@ -63,19 +64,9 @@ export const LensItem: React.FC<LensItemProps> = React.memo(
       >
         <TouchableOpacity
           style={[
-            styles.circle,
-            isSelected ? styles.circleInBigRing : styles.circleSide,
-            isSelected &&
-              !isRecording && {
-                backgroundColor:
-                  lens.id === 'normal'
-                    ? 'rgba(255, 255, 255, 0.22)'
-                    : 'rgba(20, 20, 26, 0.86)',
-                borderColor:
-                  lens.id === 'normal' ? '#ffffff' : lens.accentColor,
-                borderWidth: 2,
-              },
-            isSelected && isRecording && styles.circleRecordingRed,
+            styles.avatarBadge,
+            isSelected ? styles.badgeSelected : styles.badgeSide,
+            isSelected && isRecording && styles.badgeRecordingRed,
           ]}
           onPress={handlePress}
           activeOpacity={0.85}
@@ -90,21 +81,28 @@ export const LensItem: React.FC<LensItemProps> = React.memo(
           accessibilityState={{ selected: isSelected }}
         >
           {isSelected && isRecording ? (
-            <View style={styles.stopWhiteSquare} />
+            <View style={styles.recordingCenterView}>
+              <View style={styles.stopWhiteSquare} />
+            </View>
           ) : (
-            <Ionicons
-              name={lens.iconName as keyof typeof Ionicons.glyphMap}
-              size={isSelected ? 30 : 22}
-              color={
-                isSelected
-                  ? lens.id === 'normal'
-                    ? '#ffffff'
-                    : lens.accentColor
-                  : Colors.white
-              }
+            <LensAvatar
+              lensId={lens.id}
+              size={avatarSize}
+              isSelected={isSelected}
             />
           )}
         </TouchableOpacity>
+
+        {/* Clean, legible text name directly under each lens circle */}
+        <Text
+          style={[
+            styles.lensNameLabel,
+            isSelected && styles.lensNameLabelSelected,
+          ]}
+          numberOfLines={1}
+        >
+          {lens.id === 'normal' ? 'Natural' : lens.name}
+        </Text>
       </Animated.View>
     );
   }
@@ -115,40 +113,65 @@ LensItem.displayName = 'LensItem';
 const styles = StyleSheet.create({
   container: {
     width: LENS_ITEM_WIDTH,
-    height: 92,
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'flex-start',
+    paddingVertical: 2,
   },
-  circle: {
+  avatarBadge: {
     justifyContent: 'center',
     alignItems: 'center',
+    borderRadius: 40,
+    overflow: 'hidden',
   },
-  circleInBigRing: {
+  badgeSelected: {
     width: 68,
     height: 68,
     borderRadius: 34,
-  },
-  circleRecordingRed: {
-    backgroundColor: '#ef4444',
     borderWidth: 2,
     borderColor: '#ffffff',
-    shadowColor: '#ef4444',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.9,
-    shadowRadius: 12,
+    backgroundColor: '#09090b',
   },
-  circleSide: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: 'rgba(15, 15, 20, 0.68)',
+  badgeSide: {
+    width: 54,
+    height: 54,
+    borderRadius: 27,
     borderWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.26)',
+    borderColor: 'rgba(255, 255, 255, 0.4)',
+    backgroundColor: '#09090b',
+  },
+  badgeRecordingRed: {
+    backgroundColor: '#ef4444',
+    borderWidth: 2.5,
+    borderColor: '#ffffff',
+  },
+  recordingCenterView: {
+    width: 66,
+    height: 66,
+    borderRadius: 33,
+    backgroundColor: '#ef4444',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   stopWhiteSquare: {
     width: 22,
     height: 22,
     borderRadius: 5,
     backgroundColor: '#ffffff',
+  },
+  lensNameLabel: {
+    color: 'rgba(255, 255, 255, 0.72)',
+    fontSize: 11,
+    fontWeight: '600',
+    marginTop: 6,
+    textAlign: 'center',
+    maxWidth: 72,
+  },
+  lensNameLabelSelected: {
+    color: '#ffffff',
+    fontSize: 12.5,
+    fontWeight: '800',
+    textShadowColor: 'rgba(0, 0, 0, 0.8)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
   },
 });
