@@ -17,6 +17,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { CapturedMedia } from '../types/camera';
 import { Colors } from '../constants/colors';
+import { createShadow, createTextShadow } from '../utils/styles';
 import { saveMediaToDevice } from '../utils/mediaSaver';
 import { triggerShutterPressHaptic } from '../utils/haptics';
 
@@ -237,16 +238,8 @@ const DraggableCaptionItem: React.FC<{
                   ? '#ffffff'
                   : caption.color,
             },
-            caption.styleVariant === 'neon' && {
-              textShadowColor: caption.color,
-              textShadowOffset: { width: 0, height: 0 },
-              textShadowRadius: 12,
-            },
-            caption.styleVariant === 'outline' && {
-              textShadowColor: '#000000',
-              textShadowOffset: { width: 1.5, height: 1.5 },
-              textShadowRadius: 2,
-            },
+            caption.styleVariant === 'neon' && createTextShadow(caption.color, { width: 0, height: 0 }, 12),
+            caption.styleVariant === 'outline' && createTextShadow('#000000', { width: 1.5, height: 1.5 }, 2),
           ]}
         >
           {caption.text}
@@ -1113,10 +1106,7 @@ const styles = StyleSheet.create({
     paddingVertical: 9,
     borderRadius: 22,
     gap: 6,
-    shadowColor: Colors.accentYellow,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.4,
-    shadowRadius: 6,
+    ...createShadow(Colors.accentYellow, { width: 0, height: 2 }, 0.4, 6, 3),
   },
   exportTopBtnSuccess: {
     backgroundColor: '#4ade80',

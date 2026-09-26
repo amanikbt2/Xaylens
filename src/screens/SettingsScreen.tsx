@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../constants/colors';
+import { createShadow } from '../utils/styles';
 import { APP_CONFIG } from '../constants/config';
 import { useSettings } from '../hooks/useSettings';
 import { FlashMode, CameraFacing } from '../types/camera';
@@ -269,11 +270,7 @@ const styles = StyleSheet.create({
     padding: 16,
     borderWidth: 1,
     borderColor: '#e4e4e7',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 4,
-    elevation: 1,
+    ...createShadow('#000000', { width: 0, height: 1 }, 0.04, 4, 1),
   },
   row: {
     flexDirection: 'row',
@@ -317,11 +314,7 @@ const styles = StyleSheet.create({
   },
   segmentBtnActive: {
     backgroundColor: '#ffffff',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
+    ...createShadow('#000000', { width: 0, height: 1 }, 0.1, 2, 2),
   },
   segmentText: {
     color: Colors.textMuted,

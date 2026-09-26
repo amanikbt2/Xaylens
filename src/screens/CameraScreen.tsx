@@ -16,7 +16,6 @@ import { CameraViewRef } from '../camera/cameraTypes';
 import { CameraControls } from '../components/CameraControls';
 import { LensCarousel } from '../components/LensCarousel';
 import { ExploreLensesDrawer } from '../components/ExploreLensesDrawer';
-import { RecordingIndicator } from '../components/RecordingIndicator';
 import { PermissionView } from '../components/PermissionView';
 import { CameraErrorView } from '../components/CameraErrorView';
 import { MediaPreviewModal } from '../components/MediaPreviewModal';
@@ -78,8 +77,31 @@ export const CameraScreen: React.FC = () => {
     }
   }, []);
 
-  const { isRecording, formattedTime, startRecording, stopRecording } =
-    useRecording(handleMaxDuration);
+  const {
+    isRecording,
+    isPaused,
+    formattedTime,
+    startRecording,
+    pauseRecording,
+    resumeRecording,
+    stopRecording,
+  } = useRecording(handleMaxDuration);
+
+  // Toggle Pause / Resume during video recording
+  const handleTogglePause = useCallback(async () => {
+    if (!isRecording) return;
+    if (isPaused) {
+      resumeRecording();
+      if (cameraRef.current?.resumeRecordingAsync) {
+        await cameraRef.current.resumeRecordingAsync();
+      }
+    } else {
+      pauseRecording();
+      if (cameraRef.current?.pauseRecordingAsync) {
+        await cameraRef.current.pauseRecordingAsync();
+      }
+    }
+  }, [isRecording, isPaused, resumeRecording, pauseRecording]);
 
   // Permissions Hook
   const { isLoading, hasCameraPermission, canAskAgain, requestAllPermissions } =
@@ -210,41 +232,36 @@ export const CameraScreen: React.FC = () => {
             />
           </View>
 
-          {/* TOP MINIMAL FLOATING CONTROLS (Snapchat Style) */}
-          <View
-            style={[
-              styles.topControlsWrapper,
-              { paddingTop: insets.top || 14, pointerEvents: 'box-none' },
-            ]}
-          >
-            <CameraControls
-              flash={flash}
-              onCycleFlash={cycleFlash}
-              onToggleFacing={toggleFacing}
-              onOpenSettings={() => setIsSettingsVisible(true)}
-              isRecording={isRecording}
-              faceStatus={faceStatus}
-            />
+          {/* TOP MINIMAL FLOATING CONTROLS: Completely hidden during recording for pure screen */}
+          {!isRecording && (
+            <View
+              style={[
+                styles.topControlsWrapper,
+                { paddingTop: insets.top || 14, pointerEvents: 'box-none' },
+              ]}
+            >
+              <CameraControls
+                flash={flash}
+                onCycleFlash={cycleFlash}
+                onToggleFacing={toggleFacing}
+                onOpenSettings={() => setIsSettingsVisible(true)}
+                isRecording={false}
+                faceStatus={faceStatus}
+              />
 
-            {/* Video Recording Timer Pill */}
-            {isRecording && (
-              <View style={styles.recordingTimerFloating}>
-                <RecordingIndicator formattedTime={formattedTime} />
-              </View>
-            )}
-
-            {/* Subtle notice tag if lens suggests front camera */}
-            {lensNotice && !isRecording && (
-              <View style={styles.noticePill}>
-                <Ionicons
-                  name="information-circle-outline"
-                  size={15}
-                  color={Colors.accentYellow}
-                />
-                <Text style={styles.noticeText}>{lensNotice}</Text>
-              </View>
-            )}
-          </View>
+              {/* Subtle notice tag if lens suggests front camera */}
+              {lensNotice && (
+                <View style={styles.noticePill}>
+                  <Ionicons
+                    name="information-circle-outline"
+                    size={15}
+                    color={Colors.accentYellow}
+                  />
+                  <Text style={styles.noticeText}>{lensNotice}</Text>
+                </View>
+              )}
+            </View>
+          )}
 
           {/* BOTTOM UNIFIED SNAPCHAT SHUTTER + SWIPE-THROUGH LENS CAROUSEL */}
           <View

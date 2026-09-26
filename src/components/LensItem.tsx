@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { StyleSheet, TouchableOpacity, View, Text, Animated } from 'react-native';
+import { StyleSheet, TouchableOpacity, View, Animated } from 'react-native';
 import { Lens } from '../types/lens';
 import { triggerShutterPressHaptic } from '../utils/haptics';
 import { LensAvatar } from './LensAvatar';
@@ -23,13 +23,13 @@ export const LensItem: React.FC<LensItemProps> = React.memo(
     onSelect,
     onRecordPress,
   }) => {
-    const scaleAnim = useRef(new Animated.Value(isSelected ? 1 : 0.84)).current;
+    const scaleAnim = useRef(new Animated.Value(isSelected ? 1.04 : 0.84)).current;
 
     useEffect(() => {
       Animated.spring(scaleAnim, {
-        toValue: isSelected ? 1 : 0.84,
+        toValue: isSelected ? 1.04 : 0.84,
         useNativeDriver: true,
-        tension: 220,
+        tension: 240,
         friction: 14,
       }).start();
     }, [isSelected, scaleAnim]);
@@ -53,7 +53,7 @@ export const LensItem: React.FC<LensItemProps> = React.memo(
           styles.container,
           {
             transform: [{ scale: scaleAnim }],
-            opacity: isRecording && !isSelected ? 0.15 : 1,
+            opacity: isRecording && !isSelected ? 0.2 : 1,
           },
         ]}
       >
@@ -73,42 +73,27 @@ export const LensItem: React.FC<LensItemProps> = React.memo(
           accessibilityRole="button"
           accessibilityState={{ selected: isSelected }}
         >
-          {isSelected ? (
-            /* ACTIVE LENS: Large glowing cyan double ring focus circle (matching user's screenshot) */
-            <View
-              style={[
-                styles.bigShutterRing,
-                isRecording && styles.bigShutterRingRecording,
-              ]}
-            >
-              {isRecording ? (
-                <View style={styles.recordingCenterCore}>
-                  <View style={styles.stopWhiteSquare} />
-                </View>
-              ) : (
-                <View style={styles.innerAvatarWrapper}>
-                  <LensAvatar lensId={lens.id} size={54} isSelected={true} />
-                </View>
-              )}
+          {isSelected && isRecording ? (
+            /* RECORDING STATE: Red Stop Square in the center of the ring */
+            <View style={styles.recordingCenterCore}>
+              <View style={styles.stopWhiteSquare} />
             </View>
           ) : (
-            /* SIDE LENSES: Distinctly smaller clean circular icons */
-            <View style={styles.sideAvatarWrapper}>
-              <View style={styles.sideAvatarRing}>
-                <LensAvatar lensId={lens.id} size={42} isSelected={false} />
-              </View>
+            /* UNIFORM LENS BUBBLE: Sits perfectly centered under the fixed Snapchat shutter ring */
+            <View
+              style={[
+                styles.avatarWrapper,
+                isSelected && styles.avatarWrapperSelected,
+                !isSelected && lens.accentColor && { borderColor: 'rgba(255, 255, 255, 0.45)' },
+              ]}
+            >
+              <LensAvatar
+                lensId={lens.id}
+                size={isSelected ? 54 : 46}
+                isSelected={isSelected}
+              />
             </View>
           )}
-
-          <Text
-            style={[
-              styles.lensNameLabel,
-              isSelected && styles.lensNameLabelSelected,
-            ]}
-            numberOfLines={1}
-          >
-            {lens.name.replace(/^\d+\.\s*/, '')}
-          </Text>
         </TouchableOpacity>
       </Animated.View>
     );
@@ -120,52 +105,35 @@ LensItem.displayName = 'LensItem';
 const styles = StyleSheet.create({
   container: {
     width: LENS_ITEM_WIDTH,
+    height: 76,
     alignItems: 'center',
-    justifyContent: 'flex-start',
+    justifyContent: 'center',
   },
   touchArea: {
     alignItems: 'center',
-    justifyContent: 'flex-start',
-    width: '100%',
-  },
-  /* Large Glowing Double-Ring Circle for active lens (matching user image) */
-  bigShutterRing: {
-    width: 76,
-    height: 76,
-    borderRadius: 38,
-    borderWidth: 3.5,
-    borderColor: '#00d2ff',
-    backgroundColor: 'rgba(0, 210, 255, 0.12)',
     justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#00d2ff',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.95,
-    shadowRadius: 14,
-    elevation: 8,
+    width: '100%',
+    height: '100%',
   },
-  bigShutterRingRecording: {
-    borderColor: '#ef4444',
-    backgroundColor: '#ef4444',
-    shadowColor: '#ef4444',
-    shadowOpacity: 0.95,
-    shadowRadius: 18,
-  },
-  innerAvatarWrapper: {
-    width: 58,
-    height: 58,
-    borderRadius: 29,
+  avatarWrapper: {
+    width: 54,
+    height: 54,
+    borderRadius: 27,
     overflow: 'hidden',
     borderWidth: 1.5,
-    borderColor: '#ffffff',
+    borderColor: 'rgba(255, 255, 255, 0.5)',
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#09090b',
   },
+  avatarWrapperSelected: {
+    borderColor: '#ffffff',
+    borderWidth: 2,
+  },
   recordingCenterCore: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    width: 58,
+    height: 58,
+    borderRadius: 29,
     backgroundColor: '#ef4444',
     justifyContent: 'center',
     alignItems: 'center',
@@ -175,39 +143,5 @@ const styles = StyleSheet.create({
     height: 22,
     borderRadius: 5,
     backgroundColor: '#ffffff',
-  },
-  /* Side items container: 76px tall to keep all avatar centers vertically aligned */
-  sideAvatarWrapper: {
-    width: 76,
-    height: 76,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  sideAvatarRing: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    borderWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.55)',
-    overflow: 'hidden',
-    backgroundColor: '#09090b',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  lensNameLabel: {
-    color: 'rgba(255, 255, 255, 0.65)',
-    fontSize: 10.5,
-    fontWeight: '600',
-    marginTop: 5,
-    textAlign: 'center',
-    maxWidth: 68,
-  },
-  lensNameLabelSelected: {
-    color: '#ffffff',
-    fontSize: 12,
-    fontWeight: '800',
-    textShadowColor: 'rgba(0, 0, 0, 0.9)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 3,
   },
 });

@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../constants/colors';
+import { createShadow } from '../utils/styles';
 
 interface PermissionViewProps {
   onRequestPermission: () => void;
@@ -81,11 +82,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     paddingHorizontal: 36,
     borderRadius: 28,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
-    elevation: 3,
+    ...createShadow('#000000', { width: 0, height: 2 }, 0.1, 6, 3),
   },
   buttonText: {
     color: Colors.white,

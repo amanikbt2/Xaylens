@@ -16,4 +16,6 @@ export interface CameraViewRef {
   takePictureAsync: () => Promise<CapturedMedia | null>;
   startRecordingAsync: () => Promise<void>;
   stopRecordingAsync: () => Promise<CapturedMedia | null>;
+  pauseRecordingAsync?: () => Promise<void>;
+  resumeRecordingAsync?: () => Promise<void>;
 }

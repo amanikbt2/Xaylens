@@ -341,6 +341,26 @@ export const PlatformCameraView = forwardRef<CameraViewRef, CameraViewProps>(
         }
       },
 
+      pauseRecordingAsync: async () => {
+        try {
+          if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+            mediaRecorderRef.current.pause();
+          }
+        } catch (err) {
+          console.error('Web video pause error:', err);
+        }
+      },
+
+      resumeRecordingAsync: async () => {
+        try {
+          if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'paused') {
+            mediaRecorderRef.current.resume();
+          }
+        } catch (err) {
+          console.error('Web video resume error:', err);
+        }
+      },
+
       stopRecordingAsync: async (): Promise<CapturedMedia | null> => {
         isRecordingRef.current = false;
         const recorder = mediaRecorderRef.current;

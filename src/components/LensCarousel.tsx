@@ -21,6 +21,7 @@ interface LensCarouselProps {
   lenses: Lens[];
   activeLens: Lens;
   isRecording: boolean;
+  isPaused?: boolean;
   formattedTime?: string;
   isFavorite?: boolean;
   hasMore?: boolean;
@@ -28,6 +29,7 @@ interface LensCarouselProps {
   fetchNotice?: string | null;
   onSelectLens: (lens: Lens) => void;
   onRecordPress: () => void;
+  onTogglePause?: () => void;
   onToggleFavorite?: () => void;
   onOpenExplore?: () => void;
   onFetchMore?: () => void;
@@ -52,6 +54,7 @@ export const LensCarousel: React.FC<LensCarouselProps> = ({
   lenses,
   activeLens,
   isRecording,
+  isPaused = false,
   formattedTime = '00:00',
   isFavorite = false,
   hasMore = false,
@@ -59,6 +62,7 @@ export const LensCarousel: React.FC<LensCarouselProps> = ({
   fetchNotice = null,
   onSelectLens,
   onRecordPress,
+  onTogglePause,
   onToggleFavorite,
   onOpenExplore,
   onFetchMore,
@@ -102,12 +106,12 @@ export const LensCarousel: React.FC<LensCarouselProps> = ({
 
   // Re-center active lens whenever activeLens or containerWidth changes (if user is not dragging)
   useEffect(() => {
-    if (isUserDraggingRef.current) return;
+    if (isUserDraggingRef.current || isRecording) return;
     const index = carouselData.findIndex((l) => l.id === activeLens.id);
     if (index !== -1) {
       scrollToLensIndex(index, true);
     }
-  }, [activeLens.id, carouselData, scrollToLensIndex]);
+  }, [activeLens.id, carouselData, isRecording, scrollToLensIndex]);
 
   const handleLayout = useCallback((e: LayoutChangeEvent) => {
     const width = e.nativeEvent.layout.width;
@@ -231,148 +235,197 @@ export const LensCarousel: React.FC<LensCarouselProps> = ({
 
   return (
     <View style={styles.container} onLayout={handleLayout}>
-      {/* Live Red Recording Timer Banner (shown when recording) */}
-      {isRecording && (
-        <View style={styles.recordingBanner}>
-          <View style={styles.recordingRedDot} />
-          <Text style={styles.recordingBannerText}>
-            REC {formattedTime} • Tap circle to stop & edit
+      {/* PURE RECORDING MODE: When recording, hide all other lenses, explore, favorites, and show ONLY the selected lens + timer + pause */}
+      {isRecording ? (
+        <View style={styles.pureRecordingContainer}>
+          {/* Prominent Live Counting Recording Banner */}
+          <View
+            style={[
+              styles.recordingBanner,
+              isPaused && styles.recordingBannerPaused,
+            ]}
+          >
+            <View
+              style={[
+                styles.recordingRedDot,
+                isPaused && styles.recordingPausedDot,
+              ]}
+            />
+            <Text style={styles.recordingBannerText}>
+              {isPaused ? `PAUSED ${formattedTime}` : `REC ${formattedTime}`}
+            </Text>
+          </View>
+
+          {/* Center Row: Pause/Resume Button + Single Active Red Shutter Lens */}
+          <View style={styles.pureRecordingRow}>
+            {/* Pause / Resume Button */}
+            {onTogglePause ? (
+              <TouchableOpacity
+                style={[styles.pauseBtn, isPaused && styles.resumeBtn]}
+                onPress={onTogglePause}
+                activeOpacity={0.8}
+                accessibilityLabel={isPaused ? 'Resume video recording' : 'Pause video recording'}
+                accessibilityRole="button"
+              >
+                <Ionicons
+                  name={isPaused ? 'play' : 'pause'}
+                  size={19}
+                  color="#ffffff"
+                />
+                <Text style={styles.pauseBtnText}>
+                  {isPaused ? 'Resume' : 'Pause'}
+                </Text>
+              </TouchableOpacity>
+            ) : (
+              <View style={{ width: 84 }} />
+            )}
+
+            {/* The Selected Lens: Big Red Circle Shutter Button with White Stop Square */}
+            <LensItem
+              lens={activeLens}
+              isSelected={true}
+              isRecording={true}
+              distanceFromCenter={0}
+              onSelect={() => {}}
+              onRecordPress={onRecordPress}
+            />
+
+            {/* Symmetrical Balance Spacer */}
+            <View style={{ width: onTogglePause ? 84 : 0 }} />
+          </View>
+
+          {/* Clear Instruction Hint */}
+          <Text style={styles.tapToFinishHint}>
+            Tap red circle to stop & edit video
           </Text>
         </View>
-      )}
+      ) : (
+        /* NORMAL BROWSE MODE: Carousel with all lenses, explore launcher, favorites, and controls */
+        <>
+          {/* Subtle Floating "Loaded Lenses from Explore" Toast Indicator */}
+          {fetchNotice && (
+            <View style={styles.fetchNoticeBadge}>
+              <Text style={styles.fetchNoticeText}>{fetchNotice}</Text>
+            </View>
+          )}
 
-      {/* Subtle Floating "Loaded Lenses from Explore" Toast Indicator */}
-      {fetchNotice && !isRecording && (
-        <View style={styles.fetchNoticeBadge}>
-          <Text style={styles.fetchNoticeText}>{fetchNotice}</Text>
-        </View>
-      )}
+          {/* SLEEK FROSTED GLASS CAROUSEL TRACK */}
+          <View style={styles.glassCarouselTrack}>
+            {/* Subtle Web / Desktop Left Arrow */}
+            {Platform.OS === 'web' && (
+              <TouchableOpacity
+                style={[styles.webArrowBtn, styles.webArrowLeft]}
+                onPress={handleNavPrev}
+                hitSlop={8}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="chevron-back" size={18} color="rgba(255,255,255,0.7)" />
+              </TouchableOpacity>
+            )}
 
-      {/* SLEEK FROSTED GLASS CAROUSEL TRACK */}
-      <View style={styles.glassCarouselTrack}>
-        {/* Subtle Web / Desktop Left Arrow */}
-        {Platform.OS === 'web' && (
-          <TouchableOpacity
-            style={[styles.webArrowBtn, styles.webArrowLeft]}
-            onPress={handleNavPrev}
-            hitSlop={8}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="chevron-back" size={18} color="rgba(255,255,255,0.7)" />
-          </TouchableOpacity>
-        )}
-
-        <FlatList
-          ref={flatListRef}
-          data={carouselData}
-          keyExtractor={(item) => item.id}
-          renderItem={renderItem}
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={[
-            styles.flatListContent,
-            {
-              paddingLeft: sideSpacerWidth,
-              paddingRight: sideSpacerWidth,
-            },
-          ]}
-          snapToInterval={LENS_ITEM_WIDTH}
-          snapToAlignment="center"
-          decelerationRate="fast"
-          disableIntervalMomentum={false}
-          scrollEventThrottle={16}
-          onScrollBeginDrag={handleScrollBeginDrag}
-          onScroll={handleScroll}
-          onMomentumScrollEnd={handleScrollEnd}
-          onScrollEndDrag={handleScrollEnd}
-          onEndReached={handleEndReached}
-          onEndReachedThreshold={0.5}
-          getItemLayout={(_, index) => ({
-            length: LENS_ITEM_WIDTH,
-            offset: LENS_ITEM_WIDTH * index,
-            index,
-          })}
-          onScrollToIndexFailed={() => {}}
-          initialNumToRender={15}
-          maxToRenderPerBatch={12}
-          windowSize={11}
-        />
-
-        {/* Subtle Web / Desktop Right Arrow */}
-        {Platform.OS === 'web' && (
-          <TouchableOpacity
-            style={[styles.webArrowBtn, styles.webArrowRight]}
-            onPress={handleNavNext}
-            hitSlop={8}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="chevron-forward" size={18} color="rgba(255,255,255,0.7)" />
-          </TouchableOpacity>
-        )}
-      </View>
-
-      {/* LOWER BAR: Bookmark & Explore Buttons neatly organized BELOW the carousel */}
-      <View style={styles.lowerBar}>
-        {onToggleFavorite ? (
-          <TouchableOpacity
-            style={[
-              styles.lowerBtn,
-              isFavorite && styles.favoriteActiveBtn,
-              isRecording && styles.dimmedWhileRecording,
-            ]}
-            disabled={isRecording}
-            onPress={onToggleFavorite}
-            activeOpacity={0.8}
-            accessibilityLabel="Bookmark active lens"
-          >
-            <Ionicons
-              name={isFavorite ? 'bookmark' : 'bookmark-outline'}
-              size={17}
-              color={isFavorite ? Colors.accentYellow : Colors.white}
-            />
-            <Text
-              style={[
-                styles.lowerBtnText,
-                isFavorite && { color: Colors.accentYellow },
+            <FlatList
+              ref={flatListRef}
+              data={carouselData}
+              keyExtractor={(item) => item.id}
+              renderItem={renderItem}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={[
+                styles.flatListContent,
+                {
+                  paddingLeft: sideSpacerWidth,
+                  paddingRight: sideSpacerWidth,
+                },
               ]}
-            >
-              {isFavorite ? 'Saved' : 'Save'}
-            </Text>
-          </TouchableOpacity>
-        ) : (
-          <View style={{ width: 70 }} />
-        )}
-
-        <Text style={styles.lowerInstructionHint}>
-          {isRecording
-            ? 'Recording video...'
-            : hasMore
-            ? 'Swipe right for more lenses'
-            : 'Swipe lenses or tap circle'}
-        </Text>
-
-        {onOpenExplore ? (
-          <TouchableOpacity
-            style={[
-              styles.lowerBtn,
-              isRecording && styles.dimmedWhileRecording,
-            ]}
-            disabled={isRecording}
-            onPress={onOpenExplore}
-            activeOpacity={0.8}
-            accessibilityLabel="Explore all lenses"
-          >
-            <Ionicons
-              name="sparkles-outline"
-              size={16}
-              color={Colors.accentYellow}
+              snapToInterval={LENS_ITEM_WIDTH}
+              snapToAlignment="center"
+              decelerationRate="fast"
+              disableIntervalMomentum={false}
+              scrollEventThrottle={16}
+              onScrollBeginDrag={handleScrollBeginDrag}
+              onScroll={handleScroll}
+              onMomentumScrollEnd={handleScrollEnd}
+              onScrollEndDrag={handleScrollEnd}
+              onEndReached={handleEndReached}
+              onEndReachedThreshold={0.5}
+              getItemLayout={(_, index) => ({
+                length: LENS_ITEM_WIDTH,
+                offset: LENS_ITEM_WIDTH * index,
+                index,
+              })}
+              onScrollToIndexFailed={() => {}}
+              initialNumToRender={15}
+              maxToRenderPerBatch={12}
+              windowSize={11}
             />
-            <Text style={styles.lowerBtnText}>Explore</Text>
-          </TouchableOpacity>
-        ) : (
-          <View style={{ width: 70 }} />
-        )}
-      </View>
+
+            {/* Subtle Web / Desktop Right Arrow */}
+            {Platform.OS === 'web' && (
+              <TouchableOpacity
+                style={[styles.webArrowBtn, styles.webArrowRight]}
+                onPress={handleNavNext}
+                hitSlop={8}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="chevron-forward" size={18} color="rgba(255,255,255,0.7)" />
+              </TouchableOpacity>
+            )}
+          </View>
+
+          {/* LOWER BAR: Bookmark & Explore Buttons neatly organized BELOW the carousel */}
+          <View style={styles.lowerBar}>
+            {onToggleFavorite ? (
+              <TouchableOpacity
+                style={[
+                  styles.lowerBtn,
+                  isFavorite && styles.favoriteActiveBtn,
+                ]}
+                onPress={onToggleFavorite}
+                activeOpacity={0.8}
+                accessibilityLabel="Bookmark active lens"
+              >
+                <Ionicons
+                  name={isFavorite ? 'bookmark' : 'bookmark-outline'}
+                  size={17}
+                  color={isFavorite ? Colors.accentYellow : Colors.white}
+                />
+                <Text
+                  style={[
+                    styles.lowerBtnText,
+                    isFavorite && { color: Colors.accentYellow },
+                  ]}
+                >
+                  {isFavorite ? 'Saved' : 'Save'}
+                </Text>
+              </TouchableOpacity>
+            ) : (
+              <View style={{ width: 70 }} />
+            )}
+
+            <Text style={styles.lowerInstructionHint}>
+              {hasMore ? 'Swipe right for more lenses' : 'Swipe lenses or tap circle'}
+            </Text>
+
+            {onOpenExplore ? (
+              <TouchableOpacity
+                style={styles.lowerBtn}
+                onPress={onOpenExplore}
+                activeOpacity={0.8}
+                accessibilityLabel="Explore all lenses"
+              >
+                <Ionicons
+                  name="sparkles-outline"
+                  size={16}
+                  color={Colors.accentYellow}
+                />
+                <Text style={styles.lowerBtnText}>Explore</Text>
+              </TouchableOpacity>
+            ) : (
+              <View style={{ width: 70 }} />
+            )}
+          </View>
+        </>
+      )}
     </View>
   );
 };
@@ -382,19 +435,72 @@ const styles = StyleSheet.create({
     width: '100%',
     alignItems: 'center',
   },
+  /* Pure Recording Mode Container */
+  pureRecordingContainer: {
+    width: '100%',
+    alignItems: 'center',
+    paddingVertical: 6,
+  },
+  pureRecordingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 20,
+    marginTop: 6,
+    marginBottom: 6,
+  },
+  pauseBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(30, 41, 59, 0.85)',
+    paddingHorizontal: 15,
+    paddingVertical: 10,
+    borderRadius: 22,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.35)',
+    gap: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.4,
+    shadowRadius: 4,
+  },
+  resumeBtn: {
+    backgroundColor: 'rgba(21, 128, 61, 0.85)',
+    borderColor: '#4ade80',
+  },
+  pauseBtnText: {
+    color: '#ffffff',
+    fontSize: 13,
+    fontWeight: '800',
+    letterSpacing: 0.3,
+  },
+  tapToFinishHint: {
+    color: 'rgba(255, 255, 255, 0.75)',
+    fontSize: 12,
+    fontWeight: '600',
+    marginTop: 4,
+    textShadowColor: 'rgba(0, 0, 0, 0.85)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
+  },
   recordingBanner: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#ef4444',
-    paddingHorizontal: 14,
-    paddingVertical: 5,
-    borderRadius: 16,
-    marginBottom: 6,
-    gap: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderRadius: 18,
+    marginBottom: 4,
+    gap: 7,
     shadowColor: '#ef4444',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.5,
-    shadowRadius: 6,
+    shadowOpacity: 0.6,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  recordingBannerPaused: {
+    backgroundColor: '#d97706',
+    shadowColor: '#d97706',
   },
   recordingRedDot: {
     width: 8,
@@ -402,11 +508,14 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     backgroundColor: '#ffffff',
   },
+  recordingPausedDot: {
+    backgroundColor: '#fef08a',
+  },
   recordingBannerText: {
     color: '#ffffff',
-    fontSize: 12,
-    fontWeight: '800',
-    letterSpacing: 0.3,
+    fontSize: 13,
+    fontWeight: '900',
+    letterSpacing: 0.4,
   },
   fetchNoticeBadge: {
     position: 'absolute',
@@ -493,8 +602,5 @@ const styles = StyleSheet.create({
     color: 'rgba(255, 255, 255, 0.55)',
     fontSize: 11,
     fontWeight: '600',
-  },
-  dimmedWhileRecording: {
-    opacity: 0.2,
   },
 });

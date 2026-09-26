@@ -4,6 +4,7 @@ import { triggerRecordingHaptic } from '../utils/haptics';
 
 export const useRecording = (onMaxDurationReached?: () => void) => {
   const [isRecording, setIsRecording] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
   const [secondsElapsed, setSecondsElapsed] = useState(0);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -13,11 +14,7 @@ export const useRecording = (onMaxDurationReached?: () => void) => {
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const startRecording = useCallback(() => {
-    triggerRecordingHaptic();
-    setIsRecording(true);
-    setSecondsElapsed(0);
-
+  const startTimer = useCallback(() => {
     if (intervalRef.current) clearInterval(intervalRef.current);
     intervalRef.current = setInterval(() => {
       setSecondsElapsed((prev) => {
@@ -30,9 +27,33 @@ export const useRecording = (onMaxDurationReached?: () => void) => {
     }, 1000);
   }, [onMaxDurationReached]);
 
+  const startRecording = useCallback(() => {
+    triggerRecordingHaptic();
+    setIsRecording(true);
+    setIsPaused(false);
+    setSecondsElapsed(0);
+    startTimer();
+  }, [startTimer]);
+
+  const pauseRecording = useCallback(() => {
+    triggerRecordingHaptic();
+    setIsPaused(true);
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+  }, []);
+
+  const resumeRecording = useCallback(() => {
+    triggerRecordingHaptic();
+    setIsPaused(false);
+    startTimer();
+  }, [startTimer]);
+
   const stopRecording = useCallback(() => {
     triggerRecordingHaptic();
     setIsRecording(false);
+    setIsPaused(false);
     if (intervalRef.current) {
       clearInterval(intervalRef.current);
       intervalRef.current = null;
@@ -49,9 +70,12 @@ export const useRecording = (onMaxDurationReached?: () => void) => {
 
   return {
     isRecording,
+    isPaused,
     secondsElapsed,
     formattedTime: formatTime(secondsElapsed),
     startRecording,
+    pauseRecording,
+    resumeRecording,
     stopRecording,
   };
 };
