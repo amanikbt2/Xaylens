@@ -23,18 +23,24 @@ import {
   getLensShaderMode,
   WebVideoFaceDetector,
 } from '../effects/webglFaceShader';
+import { drawOverlayToCanvas2D } from '../effects/canvasOverlayRenderer';
 import { FaceTracker } from '../effects/faceTracker';
 import { DEFAULT_LANDMARKS } from '../effects/effectTypes';
 import { FaceLandmarks } from '../types/lens';
+import { WebBackgroundReplacement } from './WebBackgroundReplacement.web';
 
 export const PlatformCameraView = forwardRef<CameraViewRef, CameraViewProps>(
   ({ facing, flash, activeLens, onCameraReady, onMountError, style }, ref) => {
     const videoRef = useRef<HTMLVideoElement | null>(null);
     const glCanvasRef = useRef<HTMLCanvasElement | null>(null);
+    const compCanvasRef = useRef<HTMLCanvasElement | null>(null);
     const streamRef = useRef<MediaStream | null>(null);
     const mediaRecorderRef = useRef<MediaRecorder | null>(null);
     const recordedChunksRef = useRef<Blob[]>([]);
     const isRecordingRef = useRef(false);
+
+    const activeLensRef = useRef(activeLens);
+    activeLensRef.current = activeLens;
 
     const activeLensIdRef = useRef(activeLens.id);
     activeLensIdRef.current = activeLens.id;
@@ -50,6 +56,8 @@ export const PlatformCameraView = forwardRef<CameraViewRef, CameraViewProps>(
     const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
     const [liveLandmarks, setLiveLandmarks] =
       useState<FaceLandmarks>(DEFAULT_LANDMARKS);
+    const [backgroundReady, setBackgroundReady] = useState(false);
+    const isBackgroundLens = activeLens.category === 'background';
 
     const handleLayout = (e: LayoutChangeEvent) => {
       const { width, height } = e.nativeEvent.layout;
@@ -259,6 +267,26 @@ export const PlatformCameraView = forwardRef<CameraViewRef, CameraViewProps>(
           gl.uniform1f(uTime, (now - startTime) * 0.001);
 
           gl.drawArrays(gl.TRIANGLES, 0, 6);
+
+          const compCanvas = compCanvasRef.current;
+          if (compCanvas) {
+            const compCtx = compCanvas.getContext('2d');
+            if (compCtx) {
+              if (compCanvas.width !== pixelW || compCanvas.height !== pixelH) {
+                compCanvas.width = pixelW;
+                compCanvas.height = pixelH;
+              }
+              compCtx.drawImage(canvas, 0, 0);
+              drawOverlayToCanvas2D(
+                compCtx,
+                activeLensRef.current,
+                pixelW,
+                pixelH,
+                lm,
+                now
+              );
+            }
+          }
         }
 
         animId = requestAnimationFrame(renderFrame);
@@ -273,7 +301,7 @@ export const PlatformCameraView = forwardRef<CameraViewRef, CameraViewProps>(
 
     useImperativeHandle(ref, () => ({
       takePictureAsync: async (): Promise<CapturedMedia | null> => {
-        const canvas = glCanvasRef.current;
+        const canvas = compCanvasRef.current || glCanvasRef.current;
         if (!canvas) return null;
         try {
           const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
@@ -298,13 +326,14 @@ export const PlatformCameraView = forwardRef<CameraViewRef, CameraViewProps>(
         try {
           recordedChunksRef.current = [];
 
-          // Record directly from the WebGL warped canvas stream (+ microphone audio)
+          // Record directly from the composited canvas stream (+ microphone audio)
           let recordStream: MediaStream | null = null;
+          const targetCanvas = compCanvasRef.current || glCanvasRef.current;
           if (
-            glCanvasRef.current &&
-            typeof glCanvasRef.current.captureStream === 'function'
+            targetCanvas &&
+            typeof targetCanvas.captureStream === 'function'
           ) {
-            recordStream = glCanvasRef.current.captureStream(30);
+            recordStream = targetCanvas.captureStream(30);
             if (streamRef.current) {
               streamRef.current.getAudioTracks().forEach((audioTrack) => {
                 recordStream?.addTrack(audioTrack);
@@ -365,7 +394,7 @@ export const PlatformCameraView = forwardRef<CameraViewRef, CameraViewProps>(
         isRecordingRef.current = false;
         const recorder = mediaRecorderRef.current;
         if (!recorder) {
-          const canvas = glCanvasRef.current;
+          const canvas = compCanvasRef.current || glCanvasRef.current;
           if (canvas) {
             const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
             return {
@@ -455,7 +484,29 @@ export const PlatformCameraView = forwardRef<CameraViewRef, CameraViewProps>(
             height: '100%',
             objectFit: 'cover',
             backgroundColor: '#09090b',
+            opacity: isBackgroundLens && backgroundReady ? 0 : 1,
           }}
+        />
+
+        {/* Offscreen Composited Canvas for Video Recording & Photo Capture */}
+        <canvas
+          ref={compCanvasRef}
+          style={{
+            position: 'absolute',
+            width: 1,
+            height: 1,
+            opacity: 0,
+            pointerEvents: 'none',
+          }}
+        />
+
+        <WebBackgroundReplacement
+          videoRef={videoRef}
+          lens={activeLens}
+          width={dimensions.width}
+          height={dimensions.height}
+          enabled={isBackgroundLens}
+          onReady={setBackgroundReady}
         />
 
         {/* Front flash screen illumination */}

@@ -35,6 +35,7 @@ const CATEGORY_TABS: { id: FilterTab; label: string }[] = [
   { id: 'animal', label: 'Animals' },
   { id: 'creature', label: 'Creatures' },
   { id: 'style', label: 'Styles' },
+  { id: 'background', label: 'Backgrounds' },
 ];
 
 export const ExploreLensesDrawer: React.FC<ExploreLensesDrawerProps> = ({

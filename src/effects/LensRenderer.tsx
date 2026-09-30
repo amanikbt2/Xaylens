@@ -19,6 +19,7 @@ import {
   FunnyGlassesOverlay,
   AlienOverlay,
 } from './overlays';
+import { CreativeLensOverlay } from './CreativeLensOverlay';
 
 interface LensRendererProps {
   lens: Lens;
@@ -101,6 +102,14 @@ export const LensRenderer: React.FC<LensRendererProps> = React.memo(
       <View
         style={[StyleSheet.absoluteFill, { width, height, pointerEvents: 'none' }]}
       >
+        <CreativeLensOverlay
+          lens={lens}
+          width={width}
+          height={height}
+          landmarks={landmarks}
+          animationTick={tick}
+        />
+
         {/* NATIVE 3D SCULPTED BIG NOSE PROSTHETIC (No wireframes or dashed lines) */}
         {!isWeb && lens.id === 'big-nose' && (
           <Svg width={width} height={height} style={StyleSheet.absoluteFill}>

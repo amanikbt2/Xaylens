@@ -10,13 +10,19 @@ const FETCH_BATCH_SIZE = 12;
 
 export const useLens = (initialLensId: string = 'normal') => {
   // Start with curated initial batch in carousel (Snapchat style)
-  const [carouselLenses, setCarouselLenses] = useState<Lens[]>(() =>
-    ALL_50_LENSES.slice(0, INITIAL_BATCH_SIZE)
-  );
+  const [carouselLenses, setCarouselLenses] = useState<Lens[]>(() => {
+    const list = [...ALL_50_LENSES.slice(0, INITIAL_BATCH_SIZE)];
+    const normalIdx = list.findIndex((l) => l.id === 'normal');
+    if (normalIdx > 0) {
+      const [normalItem] = list.splice(normalIdx, 1);
+      list.unshift(normalItem);
+    }
+    return list;
+  });
 
   const [activeLens, setActiveLens] = useState<Lens>(() => {
     return (
-      ALL_50_LENSES.find((l) => l.id === initialLensId) || normalLens
+      ALL_50_LENSES.find((l) => l.id === initialLensId) || ALL_50_LENSES[0] || normalLens
     );
   });
 
@@ -109,9 +115,13 @@ export const useLens = (initialLensId: string = 'normal') => {
     (lens: Lens, cameraFacing: 'front' | 'back' = 'front') => {
       setCarouselLenses((prev) => {
         const exists = prev.some((l) => l.id === lens.id);
-        if (exists) return prev;
-        // Insert right after current active lens or append
-        return [...prev, lens];
+        const updated = exists ? [...prev] : [...prev, lens];
+        const normalIdx = updated.findIndex((l) => l.id === 'normal');
+        if (normalIdx > 0) {
+          const [normalItem] = updated.splice(normalIdx, 1);
+          updated.unshift(normalItem);
+        }
+        return updated;
       });
       selectLens(lens, cameraFacing);
     },

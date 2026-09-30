@@ -11,10 +11,10 @@ import { puppyLens } from './definitions/puppy';
 import { bunnyLens } from './definitions/bunny';
 import { funnyGlassesLens } from './definitions/funnyGlasses';
 
-// Array of 50 lenses with unique codes (L001, L002, ... L050)
+// Explore lens catalog with unique codes generated below.
 const RAW_LENSES: Lens[] = [
   // 01 to 11: Base lenses with numbers added to names
-  { ...normalLens, id: 'normal', name: '01. Natural' },
+  { ...normalLens, id: 'normal', name: 'Normal' },
   { ...bigNoseLens, id: 'big-nose', name: '02. Big Nose' },
   { ...bigEyesLens, id: 'big-eyes', name: '03. Anime Eyes' },
   { ...bigMouthLens, id: 'big-mouth', name: '04. Big Mouth' },
@@ -619,6 +619,72 @@ const RAW_LENSES: Lens[] = [
     config: {
       colorFilter: { tint: '#FEF2F2', contrast: 1.5, saturation: 1.6 },
     },
+  },
+  {
+    id: 'bg-forest',
+    name: 'Enchanted Forest',
+    category: 'background',
+    description: 'Real-time person cutout in a glowing forest with fireflies.',
+    supportedCamera: 'both',
+    effectType: 'overlay',
+    iconName: 'leaf-outline',
+    accentColor: '#22c55e',
+    config: { background: { scene: 'forest', removeBackground: true } },
+  },
+  {
+    id: 'bg-beach',
+    name: 'Tropical Beach',
+    category: 'background',
+    description: 'Swap your room for moving ocean waves and palm trees.',
+    supportedCamera: 'both',
+    effectType: 'overlay',
+    iconName: 'partly-sunny-outline',
+    accentColor: '#38bdf8',
+    config: { background: { scene: 'beach', removeBackground: true } },
+  },
+  {
+    id: 'bg-mountains',
+    name: 'Mountain Morning',
+    category: 'background',
+    description: 'Stand in front of layered mountains with drifting mist.',
+    supportedCamera: 'both',
+    effectType: 'overlay',
+    iconName: 'trail-sign-outline',
+    accentColor: '#a7f3d0',
+    config: { background: { scene: 'mountains', removeBackground: true } },
+  },
+  {
+    id: 'bg-sunset',
+    name: 'Pink Sunset',
+    category: 'background',
+    description: 'A changing pink-orange sky with a glowing horizon.',
+    supportedCamera: 'both',
+    effectType: 'overlay',
+    iconName: 'sunny-outline',
+    accentColor: '#fb7185',
+    config: { background: { scene: 'sunset', removeBackground: true } },
+  },
+  {
+    id: 'bg-city',
+    name: 'Neon City',
+    category: 'background',
+    description: 'Step into a rainy neon city with animated light trails.',
+    supportedCamera: 'both',
+    effectType: 'overlay',
+    iconName: 'business-outline',
+    accentColor: '#22d3ee',
+    config: { background: { scene: 'city', removeBackground: true } },
+  },
+  {
+    id: 'bg-cozy-room',
+    name: 'Cozy Room',
+    category: 'background',
+    description: 'A warm home interior with a window, plants, and soft lights.',
+    supportedCamera: 'both',
+    effectType: 'overlay',
+    iconName: 'home-outline',
+    accentColor: '#f59e0b',
+    config: { background: { scene: 'cozy-room', removeBackground: true } },
   },
 ];
 

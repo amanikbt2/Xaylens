@@ -95,6 +95,11 @@ export const LensCarousel: React.FC<LensCarouselProps> = ({
     return lenses;
   }, [lenses, onOpenExplore]);
 
+  const snapOffsets = useMemo(
+    () => carouselData.map((_, index) => index * LENS_ITEM_WIDTH),
+    [carouselData]
+  );
+
   // Smooth helper to scroll FlatList so the target index is centered
   const scrollToLensIndex = useCallback(
     (index: number, animated = true) => {
@@ -118,21 +123,28 @@ export const LensCarousel: React.FC<LensCarouselProps> = ({
     [carouselData.length]
   );
 
-  // Re-center active lens whenever activeLens or containerWidth changes (if user is not dragging or programmatically animating)
+  // Re-center active lens whenever the active item changes or after modal selection
   useEffect(() => {
-    if (isUserDraggingRef.current || isProgrammaticScrollRef.current || isRecording) return;
+    if (isRecording) return;
     const index = carouselData.findIndex((l) => l.id === activeLens.id);
-    if (index !== -1) {
-      scrollToLensIndex(index, true);
-    }
-  }, [activeLens.id, carouselData, isRecording, containerWidth, scrollToLensIndex]);
+    if (index === -1) return;
 
-  const handleLayout = useCallback((e: LayoutChangeEvent) => {
-    const width = e.nativeEvent.layout.width;
-    if (width > 0) {
-      setContainerWidth(width);
-    }
-  }, []);
+    const frame = requestAnimationFrame(() => {
+      scrollToLensIndex(index, true);
+    });
+
+    return () => cancelAnimationFrame(frame);
+  }, [activeLens.id, carouselData, containerWidth, isRecording, scrollToLensIndex]);
+
+  const handleLayout = useCallback(
+    (e: LayoutChangeEvent) => {
+      const width = e.nativeEvent.layout.width;
+      if (width > 0 && Math.abs(width - containerWidth) > 1) {
+        setContainerWidth(width);
+      }
+    },
+    [containerWidth]
+  );
 
   const handleScrollBeginDrag = useCallback(() => {
     isUserDraggingRef.current = true;
@@ -375,20 +387,27 @@ export const LensCarousel: React.FC<LensCarouselProps> = ({
                 <View style={{ width: sideSpacerWidth, height: LENS_ITEM_WIDTH }} />
               }
               contentContainerStyle={styles.flatListContent}
-              snapToInterval={LENS_ITEM_WIDTH}
-              snapToAlignment="center"
+              style={{ width: '100%', height: 108 }}
+              snapToOffsets={snapOffsets}
               decelerationRate="fast"
-              disableIntervalMomentum={false}
+              disableIntervalMomentum={true}
               scrollEventThrottle={16}
               onScrollBeginDrag={handleScrollBeginDrag}
               onScroll={handleScroll}
-              onMomentumScrollEnd={handleScrollEnd}
               onScrollEndDrag={handleScrollEnd}
+              onMomentumScrollEnd={handleScrollEnd}
+              onContentSizeChange={() => {
+                if (isRecording) return;
+                const index = carouselData.findIndex((l) => l.id === activeLens.id);
+                if (index !== -1) {
+                  requestAnimationFrame(() => scrollToLensIndex(index, false));
+                }
+              }}
               onEndReached={handleEndReached}
               onEndReachedThreshold={0.5}
               getItemLayout={(_, index) => ({
                 length: LENS_ITEM_WIDTH,
-                offset: LENS_ITEM_WIDTH * index,
+                offset: sideSpacerWidth + LENS_ITEM_WIDTH * index,
                 index,
               })}
               onScrollToIndexFailed={(info) => {
