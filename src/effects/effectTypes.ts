@@ -4,6 +4,8 @@ export interface FaceTrackingState {
   hasFace: boolean;
   landmarks: FaceLandmarks;
   confidence: number; // 0 to 1
+  quality: 'perfect' | 'poor' | 'searching';
+  lightingStatus: 'good' | 'low_light' | 'backlit' | 'searching';
   isMouthOpen: boolean;
   isBlinking: boolean;
   rotation: {
@@ -33,6 +35,8 @@ export const DEFAULT_TRACKING_STATE: FaceTrackingState = {
   hasFace: true,
   landmarks: DEFAULT_LANDMARKS,
   confidence: 0.95,
+  quality: 'perfect',
+  lightingStatus: 'good',
   isMouthOpen: false,
   isBlinking: false,
   rotation: { yaw: 0, pitch: 0, roll: 0 },

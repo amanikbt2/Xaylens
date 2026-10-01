@@ -10,6 +10,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Lens } from '../types/lens';
 import { Colors } from '../constants/colors';
 import { createShadow } from '../utils/styles';
+import { LensAvatar } from './LensAvatar';
 
 interface LensSquareCardProps {
   lens: Lens;
@@ -26,8 +27,6 @@ export const LensSquareCard: React.FC<LensSquareCardProps> = ({
   onSelect,
   onToggleFavorite,
 }) => {
-  const iconName = (lens.iconName || 'sparkles-outline') as keyof typeof Ionicons.glyphMap;
-
   const codeMatch = lens.name.match(/^(L\d+|\d+)\./);
   const codeTag = lens.code || (codeMatch ? (codeMatch[1].startsWith('L') ? codeMatch[1] : `L${codeMatch[1]}`) : null);
 
@@ -80,23 +79,17 @@ export const LensSquareCard: React.FC<LensSquareCardProps> = ({
         </Pressable>
       </View>
 
-      {/* Center Icon Symbol */}
+      {/* Matching circular lens thumbnail */}
       <View style={styles.centerSection}>
         <View
           style={[
-            styles.iconCircle,
+            styles.thumbnailCircle,
             {
-              backgroundColor: isSelected
-                ? lens.accentColor
-                : 'rgba(255, 255, 255, 0.08)',
+              borderColor: isSelected ? lens.accentColor : '#cbd5e1',
             },
           ]}
         >
-          <Ionicons
-            name={iconName}
-            size={28}
-            color={isSelected ? Colors.black : lens.accentColor}
-          />
+          <LensAvatar lensId={lens.id} size={64} isSelected={isSelected} lens={lens} />
         </View>
       </View>
 
@@ -184,10 +177,12 @@ const styles = StyleSheet.create({
     marginVertical: 4,
     zIndex: 2,
   },
-  iconCircle: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+  thumbnailCircle: {
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    borderWidth: 2,
+    overflow: 'hidden',
     justifyContent: 'center',
     alignItems: 'center',
     ...createShadow('#000000', { width: 0, height: 2 }, 0.1, 4, 3),

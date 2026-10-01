@@ -85,6 +85,7 @@ export const LensItem: React.FC<LensItemProps> = React.memo(
                 lensId={lens.id}
                 size={isSelected ? 54 : 46}
                 isSelected={isSelected}
+                lens={lens}
               />
             </View>
           )}

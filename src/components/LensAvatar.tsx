@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import Svg, {
   Defs,
   LinearGradient,
@@ -11,15 +12,17 @@ import Svg, {
   G,
   Rect,
 } from 'react-native-svg';
+import { Lens } from '../types/lens';
 
 interface LensAvatarProps {
   lensId: string;
   size: number;
   isSelected?: boolean;
+  lens?: Pick<Lens, 'category' | 'accentColor' | 'iconName'>;
 }
 
 export const LensAvatar: React.FC<LensAvatarProps> = React.memo(
-  ({ lensId, size }) => {
+  ({ lensId, size, lens }) => {
     // Generate harmonious seed colors for any generic/fallback lens
     const hash = lensId.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
     const hue1 = (hash * 37) % 360;
@@ -27,6 +30,26 @@ export const LensAvatar: React.FC<LensAvatarProps> = React.memo(
     const gradColor1 = `hsl(${hue1}, 75%, 26%)`;
     const gradColor2 = `hsl(${hue2}, 85%, 14%)`;
     const accentColor = `hsl(${hue1}, 90%, 65%)`;
+    const fallbackAccent = lens?.accentColor || accentColor;
+    const fallbackBackground =
+      lens?.category === 'animal'
+        ? '#172554'
+        : lens?.category === 'creature'
+        ? '#241044'
+        : lens?.category === 'style'
+        ? '#111827'
+        : lens?.category === 'classic'
+        ? '#1f2937'
+        : lens?.category === 'background'
+        ? '#064e3b'
+        : gradColor2;
+    const fallbackIcon = (lens?.iconName || 'sparkles-outline') as keyof typeof Ionicons.glyphMap;
+    const hasCustomArtwork = [
+      'explore-more', 'normal', 'alien', 'angel-halo', 'bg-beach', 'bg-city', 'bg-cozy-room',
+      'bg-forest', 'bg-mountains', 'bg-sunset', 'big-eyes', 'big-nose', 'bunny', 'demon-horns',
+      'fox-spirit', 'froggy', 'gigachad', 'kitty-cat', 'koala', 'lion-king', 'neon-cyborg',
+      'panda-bear', 'puffy-cheeks', 'puppy', 'synthwave-80s', 'teddy-bear', 'tiger-stripes',
+    ].includes(lensId);
 
     return (
       <View
@@ -103,6 +126,34 @@ export const LensAvatar: React.FC<LensAvatarProps> = React.memo(
             <LinearGradient id="synthBg" x1="0%" y1="0%" x2="100%" y2="100%">
               <Stop offset="0%" stopColor="#701a75" />
               <Stop offset="100%" stopColor="#1e1b4b" />
+            </LinearGradient>
+
+            <LinearGradient id="bgForest" x1="0%" y1="0%" x2="100%" y2="100%">
+              <Stop offset="0%" stopColor="#166534" />
+              <Stop offset="100%" stopColor="#052e16" />
+            </LinearGradient>
+            <LinearGradient id="bgBeach" x1="0%" y1="0%" x2="0%" y2="100%">
+              <Stop offset="0%" stopColor="#38bdf8" />
+              <Stop offset="65%" stopColor="#bae6fd" />
+              <Stop offset="66%" stopColor="#0e7490" />
+              <Stop offset="100%" stopColor="#fef3c7" />
+            </LinearGradient>
+            <LinearGradient id="bgMountains" x1="0%" y1="0%" x2="0%" y2="100%">
+              <Stop offset="0%" stopColor="#7dd3fc" />
+              <Stop offset="100%" stopColor="#334155" />
+            </LinearGradient>
+            <LinearGradient id="bgSunset" x1="0%" y1="0%" x2="0%" y2="100%">
+              <Stop offset="0%" stopColor="#fb7185" />
+              <Stop offset="60%" stopColor="#f97316" />
+              <Stop offset="100%" stopColor="#431407" />
+            </LinearGradient>
+            <LinearGradient id="bgCity" x1="0%" y1="0%" x2="0%" y2="100%">
+              <Stop offset="0%" stopColor="#312e81" />
+              <Stop offset="100%" stopColor="#09090b" />
+            </LinearGradient>
+            <LinearGradient id="bgRoom" x1="0%" y1="0%" x2="0%" y2="100%">
+              <Stop offset="0%" stopColor="#fef3c7" />
+              <Stop offset="100%" stopColor="#7c2d12" />
             </LinearGradient>
 
             <LinearGradient id={`genBg_${lensId}`} x1="0%" y1="0%" x2="100%" y2="100%">
@@ -423,22 +474,152 @@ export const LensAvatar: React.FC<LensAvatarProps> = React.memo(
               <Ellipse cx="50" cy="64" rx="10" ry="7" fill="#fef3c7" />
               <Ellipse cx="50" cy="61" rx="4.5" ry="3" fill="#1c1917" />
             </G>
+          ) : lensId === 'bg-forest' ? (
+            <G>
+              <Rect width="100" height="100" fill="url(#bgForest)" />
+              <Circle cx="18" cy="72" r="25" fill="#14532d" />
+              <Circle cx="82" cy="68" r="30" fill="#15803d" />
+              <Path d="M 50 100 L 50 45" stroke="#422006" strokeWidth="8" />
+              <Path d="M 50 62 L 25 38 M 50 70 L 76 42" stroke="#713f12" strokeWidth="5" />
+              <Circle cx="28" cy="24" r="3" fill="#fde047" />
+              <Circle cx="76" cy="34" r="2.5" fill="#fde047" />
+              <Circle cx="62" cy="18" r="2" fill="#fde047" />
+            </G>
+          ) : lensId === 'bg-beach' ? (
+            <G>
+              <Rect width="100" height="100" fill="url(#bgBeach)" />
+              <Circle cx="76" cy="25" r="12" fill="#fde68a" opacity="0.9" />
+              <Path d="M 0 66 Q 25 58 50 66 T 100 66" fill="none" stroke="#ffffff" strokeWidth="2" opacity="0.8" />
+              <Path d="M 16 78 Q 26 54 37 40" fill="none" stroke="#422006" strokeWidth="5" />
+              <Path d="M 28 49 L 10 34 M 29 48 L 36 25 M 29 48 L 49 34" fill="none" stroke="#166534" strokeWidth="4" />
+            </G>
+          ) : lensId === 'bg-mountains' ? (
+            <G>
+              <Rect width="100" height="100" fill="url(#bgMountains)" />
+              <Path d="M 0 78 L 26 32 L 45 64 L 68 22 L 100 78 Z" fill="#64748b" />
+              <Path d="M 0 84 L 35 48 L 54 70 L 78 42 L 100 84 Z" fill="#1e293b" />
+              <Path d="M 26 32 L 20 43 L 31 42 Z M 68 22 L 59 38 L 76 35 Z" fill="#f8fafc" />
+              <Path d="M 0 84 Q 50 73 100 84 L 100 100 L 0 100 Z" fill="#a7f3d0" opacity="0.55" />
+            </G>
+          ) : lensId === 'bg-sunset' ? (
+            <G>
+              <Rect width="100" height="100" fill="url(#bgSunset)" />
+              <Circle cx="72" cy="48" r="17" fill="#fde68a" opacity="0.9" />
+              <Path d="M 0 78 Q 22 66 44 78 T 100 78 L 100 100 L 0 100 Z" fill="#431407" />
+              <Path d="M 0 72 L 100 72 M 10 80 L 90 80" stroke="#fb7185" strokeWidth="2" opacity="0.6" />
+            </G>
+          ) : lensId === 'bg-city' ? (
+            <G>
+              <Rect width="100" height="100" fill="url(#bgCity)" />
+              <Path d="M 4 85 L 4 48 L 22 48 L 22 85 M 28 85 L 28 32 L 48 32 L 48 85 M 54 85 L 54 42 L 74 42 L 74 85 M 80 85 L 80 24 L 98 24 L 98 85" fill="#172554" stroke="#22d3ee" strokeWidth="1" />
+              <Path d="M 10 56 L 16 56 M 34 42 L 42 42 M 60 52 L 68 52 M 86 35 L 92 35" stroke="#f472b6" strokeWidth="3" />
+              <Path d="M 0 88 Q 50 76 100 88" fill="none" stroke="#22d3ee" strokeWidth="3" opacity="0.7" />
+            </G>
+          ) : lensId === 'bg-cozy-room' ? (
+            <G>
+              <Rect width="100" height="100" fill="url(#bgRoom)" />
+              <Rect x="20" y="20" width="60" height="38" fill="#bae6fd" stroke="#fef3c7" strokeWidth="4" />
+              <Path d="M 50 20 L 50 58 M 20 39 L 80 39" stroke="#fef3c7" strokeWidth="2" />
+              <Circle cx="14" cy="70" r="13" fill="#166534" />
+              <Rect x="11" y="70" width="6" height="25" fill="#713f12" />
+              <Path d="M 0 88 Q 50 78 100 88 L 100 100 L 0 100 Z" fill="#451a03" opacity="0.65" />
+            </G>
+          ) : lensId === 'beauty-lipstick' ? (
+            <G>
+              <Rect width="100" height="100" fill="#881337" />
+              <Ellipse cx="50" cy="54" rx="28" ry="26" fill="url(#skinTone)" />
+              {/* Eyes */}
+              <Circle cx="38" cy="48" r="3.5" fill="#1c1917" />
+              <Circle cx="62" cy="48" r="3.5" fill="#1c1917" />
+              {/* Rosy blush */}
+              <Circle cx="28" cy="56" r="6" fill="#f43f5e" opacity="0.5" />
+              <Circle cx="72" cy="56" r="6" fill="#f43f5e" opacity="0.5" />
+              {/* Red Lipstick */}
+              <Path d="M 34 64 C 40 58, 60 58, 66 64 C 60 74, 40 74, 34 64 Z" fill="#e11d48" stroke="#9f1239" strokeWidth="1.5" />
+              <Path d="M 42 63 C 46 60, 54 60, 58 63" stroke="#ffffff" strokeWidth="1.5" strokeLinecap="round" opacity="0.7" />
+            </G>
+          ) : lensId === 'beauty-natural-hair' ? (
+            <G>
+              <Rect width="100" height="100" fill="#451a03" />
+              {/* Big Afro Hair Crown */}
+              <Circle cx="50" cy="38" r="34" fill="#1c1917" />
+              <Circle cx="24" cy="38" r="16" fill="#1c1917" />
+              <Circle cx="76" cy="38" r="16" fill="#1c1917" />
+              <Circle cx="34" cy="18" r="18" fill="#1c1917" />
+              <Circle cx="66" cy="18" r="18" fill="#1c1917" />
+              {/* Face */}
+              <Ellipse cx="50" cy="58" rx="24" ry="24" fill="url(#skinTone)" />
+              <Circle cx="40" cy="52" r="3.5" fill="#1c1917" />
+              <Circle cx="60" cy="52" r="3.5" fill="#1c1917" />
+              <Path d="M 44 68 Q 50 72 56 68" stroke="#9a3412" strokeWidth="2" fill="none" />
+              {/* Golden Crown Sparkles */}
+              <Path d="M 50 10 L 52 14 L 56 16 L 52 18 L 50 22 L 48 18 L 44 16 L 48 14 Z" fill="#facc15" />
+            </G>
+          ) : lensId === 'beauty-mustache' ? (
+            <G>
+              <Rect width="100" height="100" fill="#1c1917" />
+              <Ellipse cx="50" cy="54" rx="28" ry="28" fill="url(#skinTone)" />
+              <Circle cx="38" cy="46" r="3.5" fill="#1c1917" />
+              <Circle cx="62" cy="46" r="3.5" fill="#1c1917" />
+              {/* Gentleman Handlebar Mustache */}
+              <Path
+                d="M 50 60 C 38 52, 22 55, 14 62 C 24 70, 42 66, 50 63 C 58 66, 76 70, 86 62 C 78 55, 62 52, 50 60 Z"
+                fill="#292524"
+              />
+            </G>
+          ) : lensId === 'beauty-goatee' ? (
+            <G>
+              <Rect width="100" height="100" fill="#0f172a" />
+              <Path d="M 28 35 L 72 35 L 68 65 L 56 86 L 44 86 L 32 65 Z" fill="#f59e0b" />
+              <Circle cx="40" cy="48" r="3.5" fill="#0f172a" />
+              <Circle cx="60" cy="48" r="3.5" fill="#0f172a" />
+              {/* Sharp Goatee Beard */}
+              <Path d="M 38 64 Q 50 62 62 64 L 60 74 L 56 84 L 44 84 L 40 74 Z" fill="#1e293b" />
+              <Path d="M 44 64 L 56 64 L 50 67 Z" fill="#1e293b" />
+            </G>
+          ) : lensId === 'beauty-face-glow' ? (
+            <G>
+              <Rect width="100" height="100" fill="#713f12" />
+              <Circle cx="50" cy="50" r="42" fill="#fde047" opacity="0.3" />
+              <Ellipse cx="50" cy="54" rx="28" ry="28" fill="#fef3c7" />
+              <Circle cx="38" cy="48" r="4" fill="#020617" />
+              <Circle cx="62" cy="48" r="4" fill="#020617" />
+              <Circle cx="36" cy="46" r="1.5" fill="#ffffff" />
+              <Circle cx="60" cy="46" r="1.5" fill="#ffffff" />
+              {/* Glowing sparkles */}
+              <Path d="M 26 30 L 28 34 L 32 36 L 28 38 L 26 42 L 24 38 L 20 36 L 24 34 Z" fill="#facc15" />
+              <Path d="M 74 28 L 76 31 L 79 33 L 76 35 L 74 38 L 72 35 L 69 33 L 72 31 Z" fill="#ffffff" />
+            </G>
+          ) : lensId === 'beauty-glam' ? (
+            <G>
+              <Rect width="100" height="100" fill="#831843" />
+              <Ellipse cx="50" cy="54" rx="28" ry="28" fill="url(#skinTone)" />
+              {/* Long Lashes */}
+              <Path d="M 32 44 Q 38 40 44 44 M 32 42 L 30 38 M 38 40 L 38 36 M 44 42 L 46 38" stroke="#1c1917" strokeWidth="1.8" strokeLinecap="round" fill="none" />
+              <Path d="M 56 44 Q 62 40 68 44 M 56 42 L 54 38 M 62 40 L 62 36 M 68 42 L 70 38" stroke="#1c1917" strokeWidth="1.8" strokeLinecap="round" fill="none" />
+              {/* Bright eyes */}
+              <Circle cx="38" cy="48" r="3.5" fill="#0f172a" />
+              <Circle cx="62" cy="48" r="3.5" fill="#0f172a" />
+              {/* Glam Pink Lips */}
+              <Path d="M 36 64 C 42 59, 58 59, 64 64 C 58 73, 42 73, 36 64 Z" fill="#f472b6" stroke="#db2777" strokeWidth="1.5" />
+              {/* Sparkle */}
+              <Path d="M 78 22 L 80 26 L 84 28 L 80 30 L 78 34 L 76 30 L 72 28 L 76 26 Z" fill="#fde047" />
+            </G>
           ) : (
             /* DYNAMIC HARMONIOUS AVATAR FOR ALL OTHER LENSES */
             <G>
-              <Rect width="100" height="100" fill={`url(#genBg_${lensId})`} />
-              <Circle cx="50" cy="52" r="32" fill="rgba(255,255,255,0.12)" />
-              <Ellipse cx="50" cy="54" rx="26" ry="28" fill="url(#skinTone)" />
-              <Circle cx="40" cy="48" r="4" fill="#0f172a" />
-              <Circle cx="60" cy="48" r="4" fill="#0f172a" />
-              <Circle cx="38" cy="46" r="1.5" fill="#ffffff" />
-              <Circle cx="58" cy="46" r="1.5" fill="#ffffff" />
-              {/* Category-Specific Decorative Accent */}
-              <Circle cx="50" cy="24" r="6" fill={accentColor} />
-              <Path d="M 44 66 Q 50 72 56 66" stroke="#dc2626" strokeWidth="2.5" strokeLinecap="round" fill="none" />
+              <Rect width="100" height="100" fill={fallbackBackground} />
+              <Circle cx="50" cy="50" r="39" fill={fallbackAccent} opacity={0.18} />
+              <Circle cx="50" cy="50" r="30" stroke={fallbackAccent} strokeWidth="2" opacity={0.8} fill="rgba(255,255,255,0.06)" />
+              <Path d="M 15 82 Q 50 62 85 82" stroke="#ffffff" strokeWidth="2" opacity={0.18} fill="none" />
             </G>
           )}
         </Svg>
+        {!hasCustomArtwork && (
+          <View pointerEvents="none" style={styles.fallbackIcon}>
+            <Ionicons name={fallbackIcon} size={size * 0.34} color={fallbackAccent} />
+          </View>
+        )}
       </View>
     );
   }
@@ -450,5 +631,14 @@ const styles = StyleSheet.create({
   avatarContainer: {
     overflow: 'hidden',
     backgroundColor: '#09090b',
+  },
+  fallbackIcon: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

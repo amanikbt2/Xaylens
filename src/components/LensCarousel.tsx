@@ -3,6 +3,7 @@ import {
   View,
   StyleSheet,
   FlatList,
+  ScrollView,
   Text,
   TouchableOpacity,
   NativeSyntheticEvent,
@@ -21,6 +22,8 @@ import { createShadow, createTextShadow } from '../utils/styles';
 interface LensCarouselProps {
   lenses: Lens[];
   activeLens: Lens;
+  comboLenses?: Lens[];
+  isComboActive?: boolean;
   isRecording: boolean;
   isPaused?: boolean;
   formattedTime?: string;
@@ -29,6 +32,8 @@ interface LensCarouselProps {
   isFetchingMore?: boolean;
   fetchNotice?: string | null;
   hasPreviewMedia?: boolean;
+  categoryFilter?: string;
+  onResetCategory?: () => void;
   onSelectLens: (lens: Lens) => void;
   onRecordPress: () => void;
   onTogglePause?: () => void;
@@ -38,6 +43,9 @@ interface LensCarouselProps {
   onFetchMore?: () => void;
   onHoldStart?: () => void;
   onHoldEnd?: () => void;
+  onToggleComboMode?: () => void;
+  onRemoveComboLayer?: (lensId: string) => void;
+  onClearCombo?: () => void;
 }
 
 // Special Snapchat-style Explore launcher circle at the end of the carousel
@@ -56,6 +64,8 @@ const EXPLORE_CAROUSEL_ITEM: Lens = {
 export const LensCarousel: React.FC<LensCarouselProps> = ({
   lenses,
   activeLens,
+  comboLenses = [],
+  isComboActive = false,
   isRecording,
   isPaused = false,
   formattedTime = '00:00',
@@ -64,6 +74,8 @@ export const LensCarousel: React.FC<LensCarouselProps> = ({
   isFetchingMore = false,
   fetchNotice = null,
   hasPreviewMedia = false,
+  categoryFilter = 'all',
+  onResetCategory,
   onSelectLens,
   onRecordPress,
   onTogglePause,
@@ -71,6 +83,9 @@ export const LensCarousel: React.FC<LensCarouselProps> = ({
   onOpenExplore,
   onOpenPreview,
   onFetchMore,
+  onToggleComboMode,
+  onRemoveComboLayer,
+  onClearCombo,
 }) => {
   const flatListRef = useRef<FlatList<Lens>>(null);
   const defaultWidth =
@@ -228,21 +243,6 @@ export const LensCarousel: React.FC<LensCarouselProps> = ({
     }
   }, [hasMore, isFetchingMore, onFetchMore]);
 
-  // Quick navigation arrows (useful on Desktop web / preview)
-  const handleNavPrev = () => {
-    const currentIndex = carouselData.findIndex((l) => l.id === activeLens.id);
-    if (currentIndex > 0) {
-      handleTapLens(carouselData[currentIndex - 1]);
-    }
-  };
-
-  const handleNavNext = () => {
-    const currentIndex = carouselData.findIndex((l) => l.id === activeLens.id);
-    if (currentIndex < carouselData.length - 1) {
-      handleTapLens(carouselData[currentIndex + 1]);
-    }
-  };
-
   const renderItem = ({ item, index }: { item: Lens; index: number }) => {
     const isSelected = item.id === activeLens.id;
     const activeIndex = carouselData.findIndex((l) => l.id === activeLens.id);
@@ -335,6 +335,25 @@ export const LensCarousel: React.FC<LensCarouselProps> = ({
             </View>
           )}
 
+          {/* Active Category Filter Pill */}
+          {categoryFilter !== 'all' && onResetCategory && (
+            <View style={styles.activeCategoryPill}>
+              <Ionicons name="filter-outline" size={13} color={Colors.accentYellow} />
+              <Text style={styles.activeCategoryText}>
+                {categoryFilter.toUpperCase()} ({lenses.length})
+              </Text>
+              <TouchableOpacity
+                style={styles.resetCategoryBtn}
+                onPress={onResetCategory}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="close-circle" size={15} color="#ffffff" />
+                <Text style={styles.resetCategoryText}>Show All</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
           {/* SLEEK FROSTED GLASS CAROUSEL TRACK */}
           <View style={styles.glassCarouselTrack}>
             {/* PERMANENT FIXED CENTRAL SNAPCHAT SHUTTER RING OVERLAY */}
@@ -360,18 +379,6 @@ export const LensCarousel: React.FC<LensCarouselProps> = ({
                 />
               </View>
             </View>
-
-            {/* Subtle Web / Desktop Left Arrow */}
-            {Platform.OS === 'web' && (
-              <TouchableOpacity
-                style={[styles.webArrowBtn, styles.webArrowLeft]}
-                onPress={handleNavPrev}
-                hitSlop={8}
-                activeOpacity={0.7}
-              >
-                <Ionicons name="chevron-back" size={18} color="rgba(255,255,255,0.7)" />
-              </TouchableOpacity>
-            )}
 
             <FlatList
               ref={flatListRef}
@@ -420,27 +427,71 @@ export const LensCarousel: React.FC<LensCarouselProps> = ({
               windowSize={11}
             />
 
-            {/* Subtle Web / Desktop Right Arrow */}
-            {Platform.OS === 'web' && (
-              <TouchableOpacity
-                style={[styles.webArrowBtn, styles.webArrowRight]}
-                onPress={handleNavNext}
-                hitSlop={8}
-                activeOpacity={0.7}
-              >
-                <Ionicons name="chevron-forward" size={18} color="rgba(255,255,255,0.7)" />
-              </TouchableOpacity>
-            )}
           </View>
+
+          {/* MULTI-LENS ACTIVE COMBO LAYERS BAR */}
+          {isComboActive && (
+            <View style={styles.comboStackBar}>
+              <View style={styles.comboStackHeader}>
+                <Ionicons name="layers" size={13} color="#facc15" />
+                <Text style={styles.comboStackTitle}>
+                  Layered Combo ({comboLenses.length})
+                </Text>
+                {onClearCombo && comboLenses.length > 0 && (
+                  <TouchableOpacity onPress={onClearCombo} style={styles.comboClearBtn}>
+                    <Text style={styles.comboClearText}>Clear All</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+              {comboLenses.length > 0 ? (
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.comboPillRow}
+                >
+                  {comboLenses.map((item) => (
+                    <View
+                      key={`combo_${item.id}`}
+                      style={[
+                        styles.comboPill,
+                        { borderColor: item.accentColor || '#38bdf8' },
+                      ]}
+                    >
+                      <Text style={styles.comboPillName} numberOfLines={1}>
+                        {item.name}
+                      </Text>
+                      {onRemoveComboLayer && (
+                        <TouchableOpacity
+                          onPress={() => onRemoveComboLayer(item.id)}
+                          style={styles.comboPillRemove}
+                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                        >
+                          <Ionicons name="close-circle" size={15} color="#ef4444" />
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                  ))}
+                </ScrollView>
+              ) : (
+                <Text style={styles.comboHintText}>
+                  Tap any lens below to layer on top
+                </Text>
+              )}
+            </View>
+          )}
 
           {/* CENTERED ACTIVE LENS TITLE BADGE */}
           <View style={styles.activeLensTitleBadge} pointerEvents="none">
             <Text style={styles.activeLensTitleText} numberOfLines={1}>
-              {activeLens.name}
+              {isComboActive
+                ? comboLenses.length > 0
+                  ? comboLenses.map((l) => l.name).join(' + ')
+                  : 'Select Combo Layer'
+                : activeLens.name}
             </Text>
           </View>
 
-          {/* LOWER BAR: Bookmark on Left, Last Clip in Center (if available), Explore on Right */}
+          {/* LOWER BAR: Bookmark on Left, Last Clip in Center (if available), + Combo & Explore on Right */}
           <View style={styles.lowerBar}>
             {onToggleFavorite ? (
               <TouchableOpacity
@@ -483,6 +534,38 @@ export const LensCarousel: React.FC<LensCarouselProps> = ({
               </TouchableOpacity>
             ) : (
               <View style={{ flex: 1 }} />
+            )}
+
+            {/* Right: + Add Combo Button */}
+            {onToggleComboMode && (
+              <TouchableOpacity
+                style={[
+                  styles.lowerBtn,
+                  styles.comboActionBtn,
+                  isComboActive && styles.comboActionBtnActive,
+                ]}
+                onPress={onToggleComboMode}
+                activeOpacity={0.8}
+                accessibilityLabel="Toggle multi-lens combo layering"
+              >
+                <Ionicons
+                  name={isComboActive ? 'layers' : 'layers-outline'}
+                  size={16}
+                  color={isComboActive ? '#facc15' : Colors.white}
+                />
+                <Text
+                  style={[
+                    styles.lowerBtnText,
+                    isComboActive && { color: '#facc15', fontWeight: '800' },
+                  ]}
+                >
+                  {isComboActive
+                    ? comboLenses.length > 0
+                      ? `Combo (${comboLenses.length})`
+                      : 'Combo On'
+                    : '+ Combo'}
+                </Text>
+              </TouchableOpacity>
             )}
 
             {onOpenExplore ? (
@@ -657,6 +740,39 @@ const styles = StyleSheet.create({
     borderStyle: 'dashed',
     borderColor: 'rgba(250, 204, 21, 0.45)',
   },
+  activeCategoryPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(15, 23, 42, 0.92)',
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(250, 204, 21, 0.55)',
+    marginBottom: 6,
+    gap: 6,
+  },
+  activeCategoryText: {
+    color: Colors.accentYellow,
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.4,
+  },
+  resetCategoryBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 12,
+    marginLeft: 4,
+    gap: 4,
+  },
+  resetCategoryText: {
+    color: '#ffffff',
+    fontSize: 11,
+    fontWeight: '700',
+  },
   activeLensTitleBadge: {
     marginTop: 6,
     marginBottom: 2,
@@ -675,25 +791,6 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     letterSpacing: 0.4,
     ...createTextShadow('rgba(0, 0, 0, 0.9)', { width: 0, height: 1 }, 2),
-  },
-  webArrowBtn: {
-    position: 'absolute',
-    zIndex: 10,
-    top: 38,
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: 'rgba(0, 0, 0, 0.55)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
-  },
-  webArrowLeft: {
-    left: 8,
-  },
-  webArrowRight: {
-    right: 8,
   },
   flatListContent: {
     alignItems: 'center',
@@ -743,5 +840,84 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '800',
     letterSpacing: 0.3,
+  },
+  /* Multi-Lens Combo Styles */
+  comboActionBtn: {
+    borderColor: 'rgba(250, 204, 21, 0.4)',
+  },
+  comboActionBtnActive: {
+    backgroundColor: 'rgba(250, 204, 21, 0.22)',
+    borderColor: 'rgba(250, 204, 21, 0.85)',
+  },
+  comboStackBar: {
+    width: '92%',
+    backgroundColor: 'rgba(12, 12, 18, 0.88)',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(250, 204, 21, 0.45)',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    marginTop: 6,
+    marginBottom: 4,
+  },
+  comboStackHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 6,
+  },
+  comboStackTitle: {
+    color: '#facc15',
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.4,
+    marginLeft: 6,
+    flex: 1,
+  },
+  comboClearBtn: {
+    backgroundColor: 'rgba(239, 68, 68, 0.2)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.5)',
+  },
+  comboClearText: {
+    color: '#fca5a5',
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  comboPillRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 2,
+  },
+  comboPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(30, 41, 59, 0.9)',
+    paddingHorizontal: 10,
+    paddingVertical: 4.5,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    gap: 6,
+  },
+  comboPillName: {
+    color: '#ffffff',
+    fontSize: 11,
+    fontWeight: '700',
+    maxWidth: 110,
+  },
+  comboPillRemove: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  comboHintText: {
+    color: Colors.textSecondary,
+    fontSize: 11,
+    fontStyle: 'italic',
+    textAlign: 'center',
+    marginVertical: 4,
   },
 });

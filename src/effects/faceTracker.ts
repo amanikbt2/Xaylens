@@ -8,15 +8,41 @@ export class FaceTracker {
   private smoothingFactor = 0.45; // Fast, responsive lock onto real face movement
   private timeOffset = 0;
 
+  private currentConfidence = 0.95;
+  private currentQuality: 'perfect' | 'poor' | 'searching' = 'perfect';
+  private currentLightingStatus: 'good' | 'low_light' | 'backlit' | 'searching' = 'good';
+
   /**
    * Step the tracker forward and return smoothly interpolated real-time landmarks
    */
   public step(deltaTimeMs: number): FaceTrackingState {
     this.timeOffset += deltaTimeMs * 0.001;
     const now = Date.now();
-    const hasRecentDetection = now - this.lastDetectionTimestamp < 1800;
+    const timeSinceLastDetection = now - this.lastDetectionTimestamp;
+    const hasRecentDetection = timeSinceLastDetection < 1800;
 
-    // If no face was recently detected by camera CV, slowly return toward center with tiny natural breathing
+    // Evaluate tracking quality based on detection recency and detector signals
+    let quality: 'perfect' | 'poor' | 'searching' = 'perfect';
+    let lightingStatus: 'good' | 'low_light' | 'backlit' | 'searching' = 'good';
+    let confidence = 0.95;
+
+    if (!hasRecentDetection) {
+      if (timeSinceLastDetection < 3500) {
+        quality = 'poor';
+        lightingStatus = 'low_light';
+        confidence = 0.55;
+      } else {
+        quality = 'searching';
+        lightingStatus = 'searching';
+        confidence = 0.3;
+      }
+    } else {
+      quality = this.currentQuality;
+      lightingStatus = this.currentLightingStatus;
+      confidence = this.currentConfidence;
+    }
+
+    // If no face was recently detected by camera CV, return toward center
     const base = hasRecentDetection ? this.detectedLandmarks : DEFAULT_LANDMARKS;
     const microSwayX = hasRecentDetection
       ? Math.sin(this.timeOffset * 1.4) * 0.002
@@ -72,9 +98,11 @@ export class FaceTracker {
     };
 
     return {
-      hasFace: true,
+      hasFace: hasRecentDetection || confidence > 0.4,
       landmarks: this.currentLandmarks,
-      confidence: hasRecentDetection ? 0.98 : 0.75,
+      confidence,
+      quality,
+      lightingStatus,
       isMouthOpen: false,
       isBlinking: false,
       rotation: {
@@ -86,14 +114,31 @@ export class FaceTracker {
   }
 
   /**
-   * Update target landmarks from real-time camera face/body detection
+   * Update target landmarks and metadata from real-time camera face/body detection
    */
-  public updateFromDetector(detected: Partial<FaceLandmarks>) {
+  public updateFromDetector(
+    detected: Partial<FaceLandmarks>,
+    metadata?: {
+      confidence?: number;
+      quality?: 'perfect' | 'poor' | 'searching';
+      lightingStatus?: 'good' | 'low_light' | 'backlit' | 'searching';
+    }
+  ) {
     this.lastDetectionTimestamp = Date.now();
     this.detectedLandmarks = {
       ...this.detectedLandmarks,
       ...detected,
     };
+
+    if (metadata) {
+      if (metadata.confidence !== undefined) this.currentConfidence = metadata.confidence;
+      if (metadata.quality) this.currentQuality = metadata.quality;
+      if (metadata.lightingStatus) this.currentLightingStatus = metadata.lightingStatus;
+    } else {
+      this.currentConfidence = 0.95;
+      this.currentQuality = 'perfect';
+      this.currentLightingStatus = 'good';
+    }
   }
 
   public getCurrentLandmarks(): FaceLandmarks {

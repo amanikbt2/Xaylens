@@ -8,13 +8,17 @@ import { FaceLandmarks, Lens } from '../types/lens';
  */
 export const drawOverlayToCanvas2D = (
   ctx: CanvasRenderingContext2D,
-  lens: Lens,
+  lensInput: Lens | Lens[],
   width: number,
   height: number,
   landmarks: FaceLandmarks,
   now: number
 ) => {
-  if (!lens || lens.id === 'normal') return;
+  if (!lensInput) return;
+  const lensList = Array.isArray(lensInput) ? lensInput : [lensInput];
+
+  for (const lens of lensList) {
+    if (!lens || lens.id === 'normal') continue;
 
   const faceX = landmarks.nose.x * width;
   const faceY = landmarks.nose.y * height;
@@ -629,4 +633,5 @@ export const drawOverlayToCanvas2D = (
     }
     ctx.restore();
   }
+}
 };

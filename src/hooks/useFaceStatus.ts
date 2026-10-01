@@ -1,7 +1,13 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { CameraFacing } from '../types/camera';
 
-export type FaceStatusType = 'identifying' | 'identified' | 'retrying' | 'lighting' | 'center';
+export type FaceStatusType =
+  | 'identifying'
+  | 'identified'
+  | 'perfect'
+  | 'retrying'
+  | 'lighting'
+  | 'center';
 
 export interface FaceStatus {
   type: FaceStatusType;
@@ -10,23 +16,38 @@ export interface FaceStatus {
   iconName: string;
 }
 
-export const useFaceStatus = (facing: CameraFacing, activeLensId: string) => {
+export const useFaceStatus = (
+  facing: CameraFacing,
+  activeLensId: string,
+  trackingQuality?: 'perfect' | 'poor' | 'searching',
+  lightingStatus?: 'good' | 'low_light' | 'backlit' | 'searching',
+  hasFace: boolean = true,
+  faceWidth?: number
+) => {
   const [status, setStatus] = useState<FaceStatus>({
-    type: 'identifying',
-    text: 'Identifying face...',
-    dotColor: '#F59E0B',
-    iconName: 'scan-outline',
+    type: 'perfect',
+    text: 'Perfect ✓',
+    dotColor: '#22C55E',
+    iconName: 'checkmark-circle-outline',
   });
 
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const cycleCountRef = useRef(0);
+  const prevHasFaceRef = useRef<boolean>(hasFace);
+  const splashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const setStatusState = useCallback((type: FaceStatusType, customText?: string) => {
     switch (type) {
+      case 'perfect':
+        setStatus({
+          type: 'perfect',
+          text: customText || 'Perfect ✓',
+          dotColor: '#22C55E', // Green
+          iconName: 'checkmark-circle-outline',
+        });
+        break;
       case 'identifying':
         setStatus({
           type: 'identifying',
-          text: customText || 'Identifying face...',
+          text: customText || 'Searching face...',
           dotColor: '#F59E0B', // Amber
           iconName: 'scan-outline',
         });
@@ -35,14 +56,14 @@ export const useFaceStatus = (facing: CameraFacing, activeLensId: string) => {
         setStatus({
           type: 'identified',
           text: customText || 'Face identified ✓',
-          dotColor: '#22C55E', // Green
+          dotColor: '#10B981', // Emerald
           iconName: 'checkmark-circle-outline',
         });
         break;
       case 'retrying':
         setStatus({
           type: 'retrying',
-          text: customText || 'Failed to identify face, retrying...',
+          text: customText || 'Tracking lost, retrying...',
           dotColor: '#F43F5E', // Rose/Red
           iconName: 'sync-outline',
         });
@@ -50,15 +71,15 @@ export const useFaceStatus = (facing: CameraFacing, activeLensId: string) => {
       case 'lighting':
         setStatus({
           type: 'lighting',
-          text: customText || 'Check lighting for best tracking...',
-          dotColor: '#FBBF24', // Yellow Gold
+          text: customText || 'Low light • Check lighting',
+          dotColor: '#EF4444', // Red
           iconName: 'sunny-outline',
         });
         break;
       case 'center':
         setStatus({
           type: 'center',
-          text: customText || 'Center face in frame...',
+          text: customText || 'Move closer to camera...',
           dotColor: '#38BDF8', // Cyan
           iconName: 'person-outline',
         });
@@ -66,41 +87,42 @@ export const useFaceStatus = (facing: CameraFacing, activeLensId: string) => {
     }
   }, []);
 
-  // Trigger status cycle when camera flips or lens changes
+  // Update status dynamically whenever real-time tracking signals change
   useEffect(() => {
-    // 1. Initial identifying state
-    setStatusState('identifying', 'Identifying face...');
+    const wasSearching = !prevHasFaceRef.current;
+    prevHasFaceRef.current = hasFace;
 
-    if (timerRef.current) clearTimeout(timerRef.current);
-
-    // 2. Lock onto face after 1.2s
-    timerRef.current = setTimeout(() => {
+    // Transition: Just acquired face lock after searching
+    if (wasSearching && hasFace && trackingQuality === 'perfect') {
       setStatusState('identified', 'Face identified ✓');
+      if (splashTimerRef.current) clearTimeout(splashTimerRef.current);
+      splashTimerRef.current = setTimeout(() => {
+        setStatusState('perfect', 'Perfect ✓');
+      }, 1400);
+      return;
+    }
 
-      // Periodically simulate intelligent lighting & position feedback every 14-20 seconds
-      const nextTimer = setTimeout(() => {
-        cycleCountRef.current = (cycleCountRef.current + 1) % 3;
-        if (cycleCountRef.current === 1) {
-          setStatusState('lighting', 'Check lighting for best track...');
-          setTimeout(() => setStatusState('identified', 'Face identified ✓'), 3500);
-        } else if (cycleCountRef.current === 2) {
-          setStatusState('center', 'Center face in frame...');
-          setTimeout(() => setStatusState('identified', 'Face identified ✓'), 3500);
-        }
-      }, 16000);
-
-      return () => clearTimeout(nextTimer);
-    }, 1200);
+    if (!hasFace || trackingQuality === 'searching' || lightingStatus === 'searching') {
+      setStatusState('identifying', 'Searching face...');
+    } else if (lightingStatus === 'low_light' || lightingStatus === 'backlit') {
+      setStatusState('lighting', 'Low light • Check lighting');
+    } else if (faceWidth !== undefined && faceWidth > 0 && faceWidth < 0.16) {
+      setStatusState('center', 'Move closer to camera...');
+    } else if (trackingQuality === 'poor') {
+      setStatusState('retrying', 'Tracking lost, retrying...');
+    } else {
+      setStatusState('perfect', 'Perfect ✓');
+    }
 
     return () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
+      if (splashTimerRef.current) clearTimeout(splashTimerRef.current);
     };
-  }, [facing, activeLensId, setStatusState]);
+  }, [trackingQuality, lightingStatus, hasFace, faceWidth, facing, activeLensId, setStatusState]);
 
   const triggerRetry = useCallback(() => {
-    setStatusState('retrying', 'Failed to identify face, retrying...');
-    setTimeout(() => setStatusState('identifying', 'Identifying face...'), 1800);
-    setTimeout(() => setStatusState('identified', 'Face identified ✓'), 3200);
+    setStatusState('retrying', 'Tracking lost, retrying...');
+    setTimeout(() => setStatusState('identifying', 'Searching face...'), 1800);
+    setTimeout(() => setStatusState('perfect', 'Perfect ✓'), 3200);
   }, [setStatusState]);
 
   return {

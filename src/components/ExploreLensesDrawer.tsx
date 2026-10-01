@@ -21,7 +21,7 @@ interface ExploreLensesDrawerProps {
   lenses: Lens[];
   activeLens: Lens;
   favoriteIds: string[];
-  onSelectLens: (lens: Lens) => void;
+  onSelectLens: (lens: Lens, activeTab?: FilterTab) => void;
   onToggleFavorite: (lensId: string) => void;
   onClose: () => void;
 }
@@ -31,6 +31,7 @@ type FilterTab = 'all' | 'favorites' | LensCategory;
 const CATEGORY_TABS: { id: FilterTab; label: string }[] = [
   { id: 'all', label: 'All Lenses' },
   { id: 'favorites', label: '⭐ Favorites' },
+  { id: 'beauty', label: '✨ Beauty' },
   { id: 'funny', label: 'Funny' },
   { id: 'animal', label: 'Animals' },
   { id: 'creature', label: 'Creatures' },
@@ -74,7 +75,7 @@ export const ExploreLensesDrawer: React.FC<ExploreLensesDrawerProps> = ({
   }, [lenses, activeTab, favoriteIds, searchQuery]);
 
   const handleSelectCard = (lens: Lens) => {
-    onSelectLens(lens);
+    onSelectLens(lens, activeTab);
     onClose();
   };
 

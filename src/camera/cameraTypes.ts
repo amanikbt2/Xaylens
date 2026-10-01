@@ -6,9 +6,17 @@ export interface CameraViewProps {
   flash: FlashMode;
   mode: CaptureMode;
   activeLens: Lens;
+  comboLenses?: Lens[];
   isRecording: boolean;
+  active?: boolean;
   onCameraReady?: () => void;
   onMountError?: (error: string) => void;
+  onFaceStatusChange?: (status: {
+    quality: 'perfect' | 'poor' | 'searching';
+    lightingStatus: 'good' | 'low_light' | 'backlit' | 'searching';
+    hasFace: boolean;
+    faceWidth?: number;
+  }) => void;
   style?: any;
 }
 

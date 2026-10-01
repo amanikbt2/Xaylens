@@ -33,7 +33,13 @@ type VoiceEffectId =
   | 'deep'
   | 'robot'
   | 'alien'
-  | 'megaphone';
+  | 'megaphone'
+  | 'helium'
+  | 'monster'
+  | 'telephone'
+  | 'underwater'
+  | 'stadium'
+  | 'cosmic';
 
 interface VoicePreset {
   id: VoiceEffectId;
@@ -92,6 +98,54 @@ const VOICE_PRESETS: VoicePreset[] = [
     pitchSemitones: 1,
     rateMultiplier: 1.05,
     color: '#fb923c',
+  },
+  {
+    id: 'helium',
+    label: 'Helium',
+    icon: 'balloon-outline',
+    pitchSemitones: 11,
+    rateMultiplier: 1.45,
+    color: '#ec4899',
+  },
+  {
+    id: 'monster',
+    label: 'Monster',
+    icon: 'flame-outline',
+    pitchSemitones: -10,
+    rateMultiplier: 0.65,
+    color: '#9333ea',
+  },
+  {
+    id: 'telephone',
+    label: 'Radio Phone',
+    icon: 'call-outline',
+    pitchSemitones: 0,
+    rateMultiplier: 1.0,
+    color: '#eab308',
+  },
+  {
+    id: 'underwater',
+    label: 'Underwater',
+    icon: 'water-outline',
+    pitchSemitones: -3,
+    rateMultiplier: 0.9,
+    color: '#06b6d4',
+  },
+  {
+    id: 'stadium',
+    label: 'Stadium',
+    icon: 'radio-outline',
+    pitchSemitones: 2,
+    rateMultiplier: 1.05,
+    color: '#10b981',
+  },
+  {
+    id: 'cosmic',
+    label: 'Cosmic Synth',
+    icon: 'sparkles-outline',
+    pitchSemitones: 6,
+    rateMultiplier: 1.15,
+    color: '#f43f5e',
   },
 ];
 
@@ -417,6 +471,43 @@ export const MediaPreviewModal: React.FC<MediaPreviewModalProps> = ({
           biquad.Q.value = 3.2;
           delay.delayTime.value = 0;
           feedback.gain.value = 0;
+        } else if (voiceEffect === 'helium') {
+          biquad.type = 'highshelf';
+          biquad.frequency.value = 2400;
+          biquad.gain.value = 12;
+          delay.delayTime.value = 0;
+          feedback.gain.value = 0;
+        } else if (voiceEffect === 'monster') {
+          biquad.type = 'lowshelf';
+          biquad.frequency.value = 200;
+          biquad.gain.value = 16;
+          delay.delayTime.value = 0.035;
+          feedback.gain.value = 0.38;
+        } else if (voiceEffect === 'telephone') {
+          biquad.type = 'bandpass';
+          biquad.frequency.value = 1200;
+          biquad.Q.value = 4.5;
+          delay.delayTime.value = 0;
+          feedback.gain.value = 0;
+        } else if (voiceEffect === 'underwater') {
+          biquad.type = 'lowpass';
+          biquad.frequency.value = 420;
+          biquad.Q.value = 2.0;
+          delay.delayTime.value = 0.012;
+          feedback.gain.value = 0.15;
+        } else if (voiceEffect === 'stadium') {
+          biquad.type = 'peaking';
+          biquad.frequency.value = 900;
+          biquad.gain.value = 4;
+          delay.delayTime.value = 0.22;
+          feedback.gain.value = 0.58;
+        } else if (voiceEffect === 'cosmic') {
+          biquad.type = 'peaking';
+          biquad.frequency.value = 2200;
+          biquad.Q.value = 3.0;
+          biquad.gain.value = 10;
+          delay.delayTime.value = 0.085;
+          feedback.gain.value = 0.42;
         } else {
           biquad.type = 'allpass';
           biquad.frequency.value = 1000;
@@ -540,7 +631,7 @@ export const MediaPreviewModal: React.FC<MediaPreviewModalProps> = ({
       const res = await saveMediaToDevice(media);
       setIsExporting(false);
       if (res.success) {
-        setExportSuccess('Exported to Gallery!');
+        setExportSuccess(res.message || 'Exported to XayLens folder!');
         setTimeout(() => setExportSuccess(null), 3500);
       } else {
         Alert.alert('Export Notice', res.message);

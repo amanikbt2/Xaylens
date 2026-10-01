@@ -46,6 +46,13 @@ export const CameraScreen: React.FC = () => {
     lenses,
     allLenses,
     activeLens,
+    comboLenses,
+    isComboActive,
+    toggleComboMode,
+    removeComboLayer,
+    clearCombo,
+    categoryFilter,
+    setCategory,
     selectLens,
     injectAndSelectLens,
     hasMore,
@@ -58,7 +65,33 @@ export const CameraScreen: React.FC = () => {
     isFavorite,
   } = useLens('normal');
 
-  const { status: faceStatus } = useFaceStatus(facing, activeLens.id);
+  const [trackingState, setTrackingState] = useState<{
+    quality?: 'perfect' | 'poor' | 'searching';
+    lightingStatus?: 'good' | 'low_light' | 'backlit' | 'searching';
+    hasFace?: boolean;
+    faceWidth?: number;
+  }>({});
+
+  const handleFaceStatusChange = useCallback(
+    (status: {
+      quality: 'perfect' | 'poor' | 'searching';
+      lightingStatus: 'good' | 'low_light' | 'backlit' | 'searching';
+      hasFace: boolean;
+      faceWidth?: number;
+    }) => {
+      setTrackingState(status);
+    },
+    []
+  );
+
+  const { status: faceStatus } = useFaceStatus(
+    facing,
+    activeLens.id,
+    trackingState.quality,
+    trackingState.lightingStatus,
+    trackingState.hasFace !== undefined ? trackingState.hasFace : true,
+    trackingState.faceWidth
+  );
 
   const [previewMedia, setPreviewMedia] = useState<CapturedMedia | null>(null);
   const [isPreviewVisible, setIsPreviewVisible] = useState(false);
@@ -224,9 +257,12 @@ export const CameraScreen: React.FC = () => {
               flash={flash}
               mode="video"
               activeLens={activeLens}
+              comboLenses={comboLenses}
               isRecording={isRecording}
+              active={!isPreviewVisible}
               onCameraReady={handleCameraReady}
               onMountError={handleCameraError}
+              onFaceStatusChange={handleFaceStatusChange}
               style={StyleSheet.absoluteFill}
             />
           </View>
@@ -272,6 +308,8 @@ export const CameraScreen: React.FC = () => {
             <LensCarousel
               lenses={lenses}
               activeLens={activeLens}
+              comboLenses={comboLenses}
+              isComboActive={isComboActive}
               isRecording={isRecording}
               isPaused={isPaused}
               formattedTime={formattedTime}
@@ -280,12 +318,17 @@ export const CameraScreen: React.FC = () => {
               isFetchingMore={isFetchingMore}
               fetchNotice={fetchNotice}
               hasPreviewMedia={!!previewMedia}
+              categoryFilter={categoryFilter}
+              onResetCategory={() => setCategory('all')}
               onSelectLens={(lens) => selectLens(lens, facing)}
               onToggleFavorite={() => toggleFavorite(activeLens.id)}
               onOpenExplore={() => setIsExploreVisible(true)}
               onOpenPreview={() => setIsPreviewVisible(true)}
               onFetchMore={fetchMoreLenses}
               onRecordPress={handleRecordPress}
+              onToggleComboMode={toggleComboMode}
+              onRemoveComboLayer={removeComboLayer}
+              onClearCombo={clearCombo}
               onTogglePause={handleTogglePause}
               onHoldStart={handleStartVideo}
               onHoldEnd={handleStopVideo}
@@ -313,7 +356,7 @@ export const CameraScreen: React.FC = () => {
         lenses={allLenses}
         activeLens={activeLens}
         favoriteIds={favoriteIds}
-        onSelectLens={(lens) => injectAndSelectLens(lens, facing)}
+        onSelectLens={(lens, tab) => injectAndSelectLens(lens, facing, tab)}
         onToggleFavorite={toggleFavorite}
         onClose={() => setIsExploreVisible(false)}
       />

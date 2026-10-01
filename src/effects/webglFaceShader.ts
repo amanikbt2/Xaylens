@@ -100,13 +100,20 @@ vec2 warpSwirl(vec2 uv, vec2 center, float radius, float angleRad, float aspect)
   return center + vec2(rotated.x / aspect, rotated.y);
 }
 
+bool hasMode(int mask, int bitVal) {
+  if (mask <= 0) return false;
+  float m = float(mask);
+  float b = float(bitVal);
+  return mod(floor(m / b), 2.0) >= 0.5;
+}
+
 void main() {
   float aspect = u_resolution.x / max(u_resolution.y, 1.0);
   vec2 uv = v_uv;
   float s = clamp(u_faceScale, 0.55, 1.85);
 
   // 1: BIG NOSE (TikTok Giant Bulbous Nose Magnifier locked onto real nose)
-  if (u_lensMode == 1) {
+  if (hasMode(u_lensMode, 1) || u_lensMode == 1) {
     float pulse = 1.0 + sin(u_time * 3.0) * 0.04;
     // Wide nostril flare aligned with head roll
     uv = warpEllipse(uv, u_nose + vec2(0.0, 0.018 * s), vec2(0.24 * s, 0.14 * s), 0.95 * pulse, aspect, u_roll);
@@ -117,7 +124,7 @@ void main() {
     uv = warpBulgePinch(uv, bridge, 0.09 * s, -0.28, aspect);
   }
   // 2: BIG EYES (TikTok Huge Bug-Eye / Anime Magnifier locked onto left & right eyes)
-  else if (u_lensMode == 2) {
+  if (hasMode(u_lensMode, 2) || u_lensMode == 2) {
     float pulse = 1.0 + sin(u_time * 2.5) * 0.03;
     // Left & Right Eye 2.45x Magnification
     uv = warpBulgePinch(uv, u_leftEye, 0.165 * s, 1.45 * pulse, aspect);
@@ -127,25 +134,25 @@ void main() {
     uv = warpBulgePinch(uv, u_chin, 0.16 * s, -0.28, aspect);
   }
   // 3: BIG MOUTH (TikTok Giant Smile / Mouth Magnifier locked onto mouth)
-  else if (u_lensMode == 3) {
+  if (hasMode(u_lensMode, 4) || u_lensMode == 3) {
     float pulse = 1.0 + sin(u_time * 3.2) * 0.05;
     uv = warpEllipse(uv, u_mouth, vec2(0.28 * s, 0.18 * s), 1.58 * pulse, aspect, u_roll);
     uv = warpBulgePinch(uv, u_mouth, 0.19 * s, 0.78 * pulse, aspect);
   }
   // 4: TINY FACE (TikTok Miniature Face Features on Normal Head)
-  else if (u_lensMode == 4) {
+  if (hasMode(u_lensMode, 8) || u_lensMode == 4) {
     vec2 faceCenter = mix(u_nose, u_mouth, 0.35);
     uv = warpBulgePinch(uv, faceCenter, 0.34 * s, -0.68, aspect);
     uv = warpBulgePinch(uv, u_nose, 0.18 * s, -0.35, aspect);
   }
   // 5: WIDE FACE (TikTok Wide Jaw / Gigachad Horizontal Stretch)
-  else if (u_lensMode == 5) {
+  if (hasMode(u_lensMode, 16) || u_lensMode == 5) {
     vec2 midFace = mix(u_nose, u_mouth, 0.4);
     uv = warpHorizontalStretch(uv, midFace, vec2(0.38 * s, 0.32 * s), 1.18, aspect, u_roll);
     uv = warpEllipse(uv, u_chin, vec2(0.28 * s, 0.16 * s), 0.68, aspect, u_roll);
   }
   // 6: ALIEN (Cranium Dome Bulge + V-Chin Pinch + Huge Slanted Eyes + Bio Tint)
-  else if (u_lensMode == 6) {
+  if (hasMode(u_lensMode, 32) || u_lensMode == 6) {
     uv = warpEllipse(uv, u_forehead, vec2(0.34 * s, 0.24 * s), 0.92, aspect, u_roll);
     uv = warpBulgePinch(uv, u_leftEye, 0.16 * s, 1.30, aspect);
     uv = warpBulgePinch(uv, u_rightEye, 0.16 * s, 1.30, aspect);
@@ -154,12 +161,12 @@ void main() {
     uv = warpBulgePinch(uv, u_mouth, 0.14 * s, -0.38, aspect);
   }
   // 7: SWIRL FACE (TikTok Vortex Twister following nose center)
-  else if (u_lensMode == 7) {
+  if (hasMode(u_lensMode, 64) || u_lensMode == 7) {
     float dynamicAngle = 2.35 * cos(u_time * 1.2);
     uv = warpSwirl(uv, u_nose, 0.32 * s, dynamicAngle, aspect);
   }
   // 8+: PUPPY / BUNNY / GLASSES (Subtle Cute Eye Enlargement)
-  else if (u_lensMode >= 8) {
+  if (hasMode(u_lensMode, 128) || u_lensMode >= 8) {
     uv = warpBulgePinch(uv, u_leftEye, 0.13 * s, 0.42, aspect);
     uv = warpBulgePinch(uv, u_rightEye, 0.13 * s, 0.42, aspect);
   }
@@ -171,7 +178,7 @@ void main() {
 
   vec4 color = texture2D(u_tex, sampleUv);
 
-  if (u_lensMode == 6) {
+  if (hasMode(u_lensMode, 32) || u_lensMode == 6) {
     vec2 dFace = (v_uv - u_nose) * vec2(aspect, 1.0);
     float faceMask = smoothstep(0.36 * s, 0.08 * s, length(dFace));
     vec3 alienTint = vec3(color.r * 0.68, min(1.0, color.g * 1.25 + 0.06), color.b * 0.88);
@@ -182,29 +189,42 @@ void main() {
 }
 `;
 
-export const getLensShaderMode = (lensId: string): number => {
+export const getLensShaderMode = (lensInput: any): number => {
+  if (!lensInput) return 0;
+  if (typeof lensInput === 'string') {
+    return getSingleLensModeBit(lensInput);
+  }
+  const list = Array.isArray(lensInput) ? lensInput : [lensInput];
+  let mask = 0;
+  for (const l of list) {
+    if (!l || !l.id || l.id === 'normal') continue;
+    mask |= getSingleLensModeBit(l.id);
+  }
+  return mask || 0;
+};
+
+const getSingleLensModeBit = (lensId: string): number => {
   switch (lensId) {
-    case 'normal':
-      return 0;
     case 'big-nose':
       return 1;
     case 'big-eyes':
       return 2;
     case 'big-mouth':
     case 'funny-glasses':
-      return 3;
-    case 'tiny-face':
       return 4;
+    case 'tiny-face':
+      return 8;
     case 'wide-face':
-      return 5;
+      return 16;
     case 'alien':
-      return 6;
+      return 32;
     case 'swirl-face':
-      return 7;
+      return 64;
     case 'puppy':
     case 'bunny':
+      return 128;
     default:
-      return 8;
+      return 0;
   }
 };
 

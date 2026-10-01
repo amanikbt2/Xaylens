@@ -13,7 +13,7 @@ import { LensRenderer } from '../effects/LensRenderer';
 
 export const PlatformCameraView = forwardRef<CameraViewRef, CameraViewProps>(
   (
-    { facing, flash, mode, activeLens, onCameraReady, onMountError, style },
+    { facing, flash, mode, activeLens, comboLenses, active = true, onCameraReady, onMountError, style },
     ref
   ) => {
     const cameraRef = useRef<CameraView>(null);
@@ -168,15 +168,17 @@ export const PlatformCameraView = forwardRef<CameraViewRef, CameraViewProps>(
             facing={facing}
             flash={flash}
             mode={mode === 'photo' ? 'picture' : 'video'}
+            active={active}
             onCameraReady={onCameraReady}
             onMountError={(error) => onMountError?.(error.message)}
             animateShutter={false}
           />
         </Animated.View>
 
-        {dimensions.width > 0 && dimensions.height > 0 && (
+        {active && dimensions.width > 0 && dimensions.height > 0 && (
           <LensRenderer
             lens={activeLens}
+            comboLenses={comboLenses}
             width={dimensions.width}
             height={dimensions.height}
           />

@@ -22,7 +22,8 @@ import {
 import { CreativeLensOverlay } from './CreativeLensOverlay';
 
 interface LensRendererProps {
-  lens: Lens;
+  lens?: Lens;
+  comboLenses?: Lens[];
   width?: number;
   height?: number;
   landmarks?: FaceLandmarks;
@@ -31,7 +32,7 @@ interface LensRendererProps {
 const { width: defaultWidth, height: defaultHeight } = Dimensions.get('window');
 
 export const LensRenderer: React.FC<LensRendererProps> = React.memo(
-  ({ lens, width = defaultWidth, height = defaultHeight, landmarks: externalLandmarks }) => {
+  ({ lens, comboLenses, width = defaultWidth, height = defaultHeight, landmarks: externalLandmarks }) => {
     const [trackingState, setTrackingState] =
       useState<FaceTrackingState>(DEFAULT_TRACKING_STATE);
     const [tick, setTick] = useState(0);
@@ -68,22 +69,14 @@ export const LensRenderer: React.FC<LensRendererProps> = React.memo(
       };
     }, []);
 
-    if (lens.id === 'normal') {
-      return null;
-    }
+    const activeList = React.useMemo(() => {
+      if (comboLenses && comboLenses.length > 0) {
+        return comboLenses.filter((l) => l && l.id !== 'normal');
+      }
+      return lens && lens.id !== 'normal' ? [lens] : [];
+    }, [lens, comboLenses]);
 
-    // On Web, pure pixel-warp lenses (big-nose, big-eyes, big-mouth, wide-face, tiny-face, swirl-face)
-    // are rendered directly inside the 60fps WebGL fragment shader in WebCameraView.web.tsx!
-    const isWeb = Platform.OS === 'web';
-    if (
-      isWeb &&
-      (lens.id === 'big-nose' ||
-        lens.id === 'big-eyes' ||
-        lens.id === 'big-mouth' ||
-        lens.id === 'wide-face' ||
-        lens.id === 'tiny-face' ||
-        lens.id === 'swirl-face')
-    ) {
+    if (activeList.length === 0) {
       return null;
     }
 
@@ -97,21 +90,27 @@ export const LensRenderer: React.FC<LensRendererProps> = React.memo(
     const mouthX = landmarks.mouth.x * width;
     const mouthY = landmarks.mouth.y * height;
     const faceScale = (landmarks.faceWidth * width) / 200;
+    const isWeb = Platform.OS === 'web';
+
+    const hasLens = (id: string) => activeList.some((l) => l.id === id);
 
     return (
       <View
         style={[StyleSheet.absoluteFill, { width, height, pointerEvents: 'none' }]}
       >
-        <CreativeLensOverlay
-          lens={lens}
-          width={width}
-          height={height}
-          landmarks={landmarks}
-          animationTick={tick}
-        />
+        {activeList.map((l) => (
+          <CreativeLensOverlay
+            key={l.id}
+            lens={l}
+            width={width}
+            height={height}
+            landmarks={landmarks}
+            animationTick={tick}
+          />
+        ))}
 
         {/* NATIVE 3D SCULPTED BIG NOSE PROSTHETIC (No wireframes or dashed lines) */}
-        {!isWeb && lens.id === 'big-nose' && (
+        {!isWeb && hasLens('big-nose') && (
           <Svg width={width} height={height} style={StyleSheet.absoluteFill}>
             <Defs>
               <RadialGradient id="sculptedNoseSkin" cx="42%" cy="36%" r="58%">
@@ -176,7 +175,7 @@ export const LensRenderer: React.FC<LensRendererProps> = React.memo(
         )}
 
         {/* NATIVE 3D GLOSSY ANIME / BUG EYES (No blue rings or wireframes) */}
-        {!isWeb && lens.id === 'big-eyes' && (
+        {!isWeb && hasLens('big-eyes') && (
           <Svg width={width} height={height} style={StyleSheet.absoluteFill}>
             <Defs>
               <RadialGradient id="sclera3D" cx="48%" cy="45%" r="52%">
@@ -221,7 +220,7 @@ export const LensRenderer: React.FC<LensRendererProps> = React.memo(
         )}
 
         {/* NATIVE 3D GIANT MOUTH / LIPS */}
-        {!isWeb && lens.id === 'big-mouth' && (
+        {!isWeb && hasLens('big-mouth') && (
           <Svg width={width} height={height} style={StyleSheet.absoluteFill}>
             <Defs>
               <LinearGradient id="plumpLips" x1="0%" y1="0%" x2="0%" y2="100%">
@@ -257,7 +256,7 @@ export const LensRenderer: React.FC<LensRendererProps> = React.memo(
         )}
 
         {/* ALIEN HYBRID LENS */}
-        {lens.id === 'alien' && (
+        {hasLens('alien') && (
           <AlienOverlay
             landmarks={landmarks}
             canvasWidth={width}
@@ -267,7 +266,7 @@ export const LensRenderer: React.FC<LensRendererProps> = React.memo(
         )}
 
         {/* PUPPY OVERLAY LENS */}
-        {lens.id === 'puppy' && (
+        {hasLens('puppy') && (
           <PuppyOverlay
             landmarks={landmarks}
             canvasWidth={width}
@@ -277,7 +276,7 @@ export const LensRenderer: React.FC<LensRendererProps> = React.memo(
         )}
 
         {/* BUNNY OVERLAY LENS */}
-        {lens.id === 'bunny' && (
+        {hasLens('bunny') && (
           <BunnyOverlay
             landmarks={landmarks}
             canvasWidth={width}
@@ -287,7 +286,7 @@ export const LensRenderer: React.FC<LensRendererProps> = React.memo(
         )}
 
         {/* FUNNY GLASSES OVERLAY LENS */}
-        {lens.id === 'funny-glasses' && (
+        {hasLens('funny-glasses') && (
           <FunnyGlassesOverlay
             landmarks={landmarks}
             canvasWidth={width}

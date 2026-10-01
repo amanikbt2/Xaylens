@@ -12,6 +12,7 @@ import {
   Text,
   TouchableOpacity,
   LayoutChangeEvent,
+  ActivityIndicator,
 } from 'react-native';
 import { CameraViewProps, CameraViewRef } from './cameraTypes';
 import { CapturedMedia } from '../types/camera';
@@ -30,17 +31,27 @@ import { FaceLandmarks } from '../types/lens';
 import { WebBackgroundReplacement } from './WebBackgroundReplacement.web';
 
 export const PlatformCameraView = forwardRef<CameraViewRef, CameraViewProps>(
-  ({ facing, flash, activeLens, onCameraReady, onMountError, style }, ref) => {
+  ({ facing, flash, activeLens, comboLenses, active = true, onCameraReady, onMountError, onFaceStatusChange, style }, ref) => {
     const videoRef = useRef<HTMLVideoElement | null>(null);
     const glCanvasRef = useRef<HTMLCanvasElement | null>(null);
     const compCanvasRef = useRef<HTMLCanvasElement | null>(null);
+    const backgroundCanvasRef = useRef<HTMLCanvasElement | null>(null);
     const streamRef = useRef<MediaStream | null>(null);
     const mediaRecorderRef = useRef<MediaRecorder | null>(null);
     const recordedChunksRef = useRef<Blob[]>([]);
     const isRecordingRef = useRef(false);
 
+    const onFaceStatusChangeRef = useRef(onFaceStatusChange);
+    onFaceStatusChangeRef.current = onFaceStatusChange;
+
+    const activeRef = useRef(active);
+    activeRef.current = active;
+
     const activeLensRef = useRef(activeLens);
     activeLensRef.current = activeLens;
+
+    const comboLensesRef = useRef(comboLenses);
+    comboLensesRef.current = comboLenses;
 
     const activeLensIdRef = useRef(activeLens.id);
     activeLensIdRef.current = activeLens.id;
@@ -57,6 +68,7 @@ export const PlatformCameraView = forwardRef<CameraViewRef, CameraViewProps>(
     const [liveLandmarks, setLiveLandmarks] =
       useState<FaceLandmarks>(DEFAULT_LANDMARKS);
     const [backgroundReady, setBackgroundReady] = useState(false);
+    const [backgroundLoading, setBackgroundLoading] = useState(false);
     const isBackgroundLens = activeLens.category === 'background';
 
     const handleLayout = (e: LayoutChangeEvent) => {
@@ -65,6 +77,17 @@ export const PlatformCameraView = forwardRef<CameraViewRef, CameraViewProps>(
         setDimensions({ width, height });
       }
     };
+
+    const stopWebCamera = useCallback(() => {
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((t) => t.stop());
+        streamRef.current = null;
+      }
+      if (videoRef.current) {
+        videoRef.current.pause();
+        videoRef.current.srcObject = null;
+      }
+    }, []);
 
     const initWebCamera = useCallback(async () => {
       try {
@@ -75,9 +98,7 @@ export const PlatformCameraView = forwardRef<CameraViewRef, CameraViewProps>(
           throw new Error('Camera API is not supported in this browser.');
         }
 
-        if (streamRef.current) {
-          streamRef.current.getTracks().forEach((t) => t.stop());
-        }
+        stopWebCamera();
 
         const facingMode = facing === 'front' ? 'user' : 'environment';
         const constraints: MediaStreamConstraints = {
@@ -107,16 +128,18 @@ export const PlatformCameraView = forwardRef<CameraViewRef, CameraViewProps>(
         setHasPermission(false);
         onMountError?.(msg);
       }
-    }, [facing, onCameraReady, onMountError]);
+    }, [facing, onCameraReady, onMountError, stopWebCamera]);
 
     useEffect(() => {
-      initWebCamera();
+      if (active) {
+        initWebCamera();
+      } else {
+        stopWebCamera();
+      }
       return () => {
-        if (streamRef.current) {
-          streamRef.current.getTracks().forEach((t) => t.stop());
-        }
+        stopWebCamera();
       };
-    }, [initWebCamera]);
+    }, [active, initWebCamera, stopWebCamera]);
 
     // Real-time 60fps WebGL Face-Distortion & Pixel-Magnification Pipeline
     useEffect(() => {
@@ -228,6 +251,14 @@ export const PlatformCameraView = forwardRef<CameraViewRef, CameraViewProps>(
         if (now - lastOverlaySyncTime > 32) {
           lastOverlaySyncTime = now;
           setLiveLandmarks({ ...lm });
+          if (onFaceStatusChangeRef.current) {
+            onFaceStatusChangeRef.current({
+              quality: state.quality,
+              lightingStatus: state.lightingStatus,
+              hasFace: state.hasFace,
+              faceWidth: lm.faceWidth,
+            });
+          }
         }
 
         if (video.readyState >= 2 && video.videoWidth > 0) {
@@ -255,7 +286,14 @@ export const PlatformCameraView = forwardRef<CameraViewRef, CameraViewProps>(
 
           gl.uniform2f(uResolution, pixelW, pixelH);
           gl.uniform1f(uMirror, facingRef.current === 'front' ? 1.0 : 0.0);
-          gl.uniform1i(uLensMode, getLensShaderMode(activeLensIdRef.current));
+          gl.uniform1i(
+            uLensMode,
+            getLensShaderMode(
+              comboLensesRef.current && comboLensesRef.current.length > 0
+                ? comboLensesRef.current
+                : activeLensRef.current
+            )
+          );
           gl.uniform2f(uNose, lm.nose.x, lm.nose.y);
           gl.uniform2f(uLeftEye, lm.leftEye.x, lm.leftEye.y);
           gl.uniform2f(uRightEye, lm.rightEye.x, lm.rightEye.y);
@@ -279,7 +317,9 @@ export const PlatformCameraView = forwardRef<CameraViewRef, CameraViewProps>(
               compCtx.drawImage(canvas, 0, 0);
               drawOverlayToCanvas2D(
                 compCtx,
-                activeLensRef.current,
+                comboLensesRef.current && comboLensesRef.current.length > 0
+                  ? comboLensesRef.current
+                  : activeLensRef.current,
                 pixelW,
                 pixelH,
                 lm,
@@ -301,7 +341,10 @@ export const PlatformCameraView = forwardRef<CameraViewRef, CameraViewProps>(
 
     useImperativeHandle(ref, () => ({
       takePictureAsync: async (): Promise<CapturedMedia | null> => {
-        const canvas = compCanvasRef.current || glCanvasRef.current;
+        const canvas =
+          activeLensRef.current.category === 'background'
+            ? backgroundCanvasRef.current || compCanvasRef.current || glCanvasRef.current
+            : compCanvasRef.current || glCanvasRef.current;
         if (!canvas) return null;
         try {
           const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
@@ -328,7 +371,10 @@ export const PlatformCameraView = forwardRef<CameraViewRef, CameraViewProps>(
 
           // Record directly from the composited canvas stream (+ microphone audio)
           let recordStream: MediaStream | null = null;
-          const targetCanvas = compCanvasRef.current || glCanvasRef.current;
+          const targetCanvas =
+            activeLensRef.current.category === 'background'
+              ? backgroundCanvasRef.current || compCanvasRef.current || glCanvasRef.current
+              : compCanvasRef.current || glCanvasRef.current;
           if (
             targetCanvas &&
             typeof targetCanvas.captureStream === 'function'
@@ -394,7 +440,10 @@ export const PlatformCameraView = forwardRef<CameraViewRef, CameraViewProps>(
         isRecordingRef.current = false;
         const recorder = mediaRecorderRef.current;
         if (!recorder) {
-          const canvas = compCanvasRef.current || glCanvasRef.current;
+          const canvas =
+            activeLensRef.current.category === 'background'
+              ? backgroundCanvasRef.current || compCanvasRef.current || glCanvasRef.current
+              : compCanvasRef.current || glCanvasRef.current;
           if (canvas) {
             const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
             return {
@@ -502,12 +551,23 @@ export const PlatformCameraView = forwardRef<CameraViewRef, CameraViewProps>(
 
         <WebBackgroundReplacement
           videoRef={videoRef}
+          outputCanvasRef={backgroundCanvasRef}
           lens={activeLens}
           width={dimensions.width}
           height={dimensions.height}
           enabled={isBackgroundLens}
           onReady={setBackgroundReady}
+          onLoadingChange={setBackgroundLoading}
         />
+
+        {backgroundLoading && (
+          <View style={styles.lensLoadingOverlay} pointerEvents="none">
+            <View style={styles.lensLoadingCard}>
+              <ActivityIndicator size="small" color="#facc15" />
+              <Text style={styles.lensLoadingText}>Loading lens…</Text>
+            </View>
+          </View>
+        )}
 
         {/* Front flash screen illumination */}
         {flash === 'on' && (
@@ -532,6 +592,7 @@ export const PlatformCameraView = forwardRef<CameraViewRef, CameraViewProps>(
         {dimensions.width > 0 && dimensions.height > 0 && (
           <LensRenderer
             lens={activeLens}
+            comboLenses={comboLenses}
             width={dimensions.width}
             height={dimensions.height}
             landmarks={liveLandmarks}
@@ -558,6 +619,32 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     backgroundColor: 'rgba(255, 252, 235, 0.22)',
+  },
+  lensLoadingOverlay: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 20,
+  },
+  lensLoadingCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 9,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 22,
+    backgroundColor: 'rgba(9, 9, 11, 0.78)',
+    borderWidth: 1,
+    borderColor: 'rgba(250, 204, 21, 0.55)',
+  },
+  lensLoadingText: {
+    color: '#ffffff',
+    fontSize: 13,
+    fontWeight: '700',
   },
   errorOverlay: {
     position: 'absolute',

@@ -34,16 +34,33 @@ export const saveMediaToDevice = async (media: CapturedMedia): Promise<SaveMedia
     }
 
     const asset = await MediaLibrary.createAssetAsync(media.uri);
-    const album = await MediaLibrary.getAlbumAsync('XayLens');
+
+    // Look for existing album under XayLens, Xaylens, or Xaylence
+    let album = await MediaLibrary.getAlbumAsync('XayLens');
+    if (!album) {
+      album = await MediaLibrary.getAlbumAsync('Xaylens');
+    }
+    if (!album) {
+      album = await MediaLibrary.getAlbumAsync('Xaylence');
+    }
+
     if (album == null) {
-      await MediaLibrary.createAlbumAsync('XayLens', asset, false);
+      try {
+        await MediaLibrary.createAlbumAsync('XayLens', asset, false);
+      } catch {
+        await MediaLibrary.createAlbumAsync('XayLens', asset, true);
+      }
     } else {
-      await MediaLibrary.addAssetsToAlbumAsync([asset], album, false);
+      try {
+        await MediaLibrary.addAssetsToAlbumAsync([asset], album, false);
+      } catch {
+        await MediaLibrary.addAssetsToAlbumAsync([asset], album, true);
+      }
     }
 
     return {
       success: true,
-      message: 'Saved to XayLens album in your gallery!',
+      message: 'Saved to XayLens folder in your gallery!',
     };
   } catch (err: unknown) {
     const errorMsg = err instanceof Error ? err.message : 'Failed to save media.';
