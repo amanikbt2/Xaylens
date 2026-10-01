@@ -21,6 +21,8 @@ import {
 } from './overlays';
 import { CreativeLensOverlay } from './CreativeLensOverlay';
 
+import { getWarpedLandmarks } from '../utils/landmarkWarper';
+
 interface LensRendererProps {
   lens?: Lens;
   comboLenses?: Lens[];
@@ -80,7 +82,8 @@ export const LensRenderer: React.FC<LensRendererProps> = React.memo(
       return null;
     }
 
-    const landmarks = externalLandmarks || trackingState.landmarks;
+    const rawLandmarks = externalLandmarks || trackingState.landmarks;
+    const landmarks = getWarpedLandmarks(rawLandmarks, activeList);
     const noseX = landmarks.nose.x * width;
     const noseY = landmarks.nose.y * height;
     const eyeLX = landmarks.leftEye.x * width;

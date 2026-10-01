@@ -210,7 +210,6 @@ const getSingleLensModeBit = (lensId: string): number => {
     case 'big-eyes':
       return 2;
     case 'big-mouth':
-    case 'funny-glasses':
       return 4;
     case 'tiny-face':
       return 8;

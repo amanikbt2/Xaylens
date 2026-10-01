@@ -89,7 +89,7 @@ export const CameraScreen: React.FC = () => {
     activeLens.id,
     trackingState.quality,
     trackingState.lightingStatus,
-    trackingState.hasFace !== undefined ? trackingState.hasFace : true,
+    trackingState.hasFace !== undefined ? trackingState.hasFace : false,
     trackingState.faceWidth
   );
 

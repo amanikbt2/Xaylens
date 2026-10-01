@@ -72,7 +72,13 @@ export interface LensConfig {
       | 'aurora'
       | 'sakura'
       | 'synth-sun'
-      | 'studio-pro';
+      | 'studio-pro'
+      | 'office'
+      | 'park'
+      | 'car'
+      | 'cafe'
+      | 'gaming'
+      | 'penthouse';
     removeBackground?: boolean;
   };
 }

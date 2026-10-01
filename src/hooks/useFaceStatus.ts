@@ -21,14 +21,14 @@ export const useFaceStatus = (
   activeLensId: string,
   trackingQuality?: 'perfect' | 'poor' | 'searching',
   lightingStatus?: 'good' | 'low_light' | 'backlit' | 'searching',
-  hasFace: boolean = true,
+  hasFace: boolean = false,
   faceWidth?: number
 ) => {
   const [status, setStatus] = useState<FaceStatus>({
-    type: 'perfect',
-    text: 'Perfect ✓',
-    dotColor: '#22C55E',
-    iconName: 'checkmark-circle-outline',
+    type: 'identifying',
+    text: 'Searching face...',
+    dotColor: '#F59E0B',
+    iconName: 'scan-outline',
   });
 
   const prevHasFaceRef = useRef<boolean>(hasFace);
@@ -110,8 +110,12 @@ export const useFaceStatus = (
       setStatusState('center', 'Move closer to camera...');
     } else if (trackingQuality === 'poor') {
       setStatusState('retrying', 'Tracking lost, retrying...');
-    } else {
+    } else if (hasFace && trackingQuality === 'perfect') {
       setStatusState('perfect', 'Perfect ✓');
+    } else if (hasFace) {
+      setStatusState('identified', 'Face identified ✓');
+    } else {
+      setStatusState('identifying', 'Searching face...');
     }
 
     return () => {
@@ -122,7 +126,6 @@ export const useFaceStatus = (
   const triggerRetry = useCallback(() => {
     setStatusState('retrying', 'Tracking lost, retrying...');
     setTimeout(() => setStatusState('identifying', 'Searching face...'), 1800);
-    setTimeout(() => setStatusState('perfect', 'Perfect ✓'), 3200);
   }, [setStatusState]);
 
   return {

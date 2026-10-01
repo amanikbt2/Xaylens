@@ -17,280 +17,271 @@ type Scene = NonNullable<Lens['config']['background']>['scene'];
 
 const sceneForLens = (lens: Lens): Scene => lens.config.background?.scene || 'forest';
 
+const SCENE_IMAGE_URLS: Partial<Record<Scene, string>> = {
+  office: 'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=1200&q=80',
+  park: 'https://images.unsplash.com/photo-1519331379826-f10be5486c6f?auto=format&fit=crop&w=1200&q=80',
+  car: 'https://images.unsplash.com/photo-1549399542-7e3f8b79c341?auto=format&fit=crop&w=1200&q=80',
+  cafe: 'https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&fit=crop&w=1200&q=80',
+  gaming: 'https://images.unsplash.com/photo-1616588589676-62b3bd4ff6d2?auto=format&fit=crop&w=1200&q=80',
+  penthouse: 'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?auto=format&fit=crop&w=1200&q=80',
+  'cozy-room': 'https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&w=1200&q=80',
+  city: 'https://images.unsplash.com/photo-1514565131-fce0801e5785?auto=format&fit=crop&w=1200&q=80',
+  beach: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1200&q=80',
+  mountains: 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=1200&q=80',
+  forest: 'https://images.unsplash.com/photo-1448375240586-882707db888b?auto=format&fit=crop&w=1200&q=80',
+  'studio-pro': 'https://images.unsplash.com/photo-1598899134739-24c46f58b8c0?auto=format&fit=crop&w=1200&q=80',
+};
+
+const imageCache: Map<string, HTMLImageElement> = new Map();
+
+const getPreloadedImage = (url: string): HTMLImageElement | null => {
+  if (typeof window === 'undefined') return null;
+  let img = imageCache.get(url);
+  if (!img) {
+    img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.src = url;
+    imageCache.set(url, img);
+  }
+  return img.complete && img.naturalWidth !== 0 ? img : null;
+};
+
+const drawImageCover = (
+  ctx: CanvasRenderingContext2D,
+  img: HTMLImageElement,
+  cw: number,
+  ch: number
+) => {
+  const iw = img.naturalWidth || img.width;
+  const ih = img.naturalHeight || img.height;
+  if (!iw || !ih) return;
+  const scale = Math.max(cw / iw, ch / ih);
+  const nw = iw * scale;
+  const nh = ih * scale;
+  const cx = (cw - nw) / 2;
+  const cy = (ch - nh) / 2;
+  ctx.drawImage(img, cx, cy, nw, nh);
+};
+
 const drawScene = (ctx: CanvasRenderingContext2D, width: number, height: number, scene: Scene, time: number) => {
   const drift = Math.sin(time * 0.00025) * width * 0.04;
-  const sky = ctx.createLinearGradient(0, 0, 0, height);
+  const imageUrl = SCENE_IMAGE_URLS[scene];
+  const realImg = imageUrl ? getPreloadedImage(imageUrl) : null;
 
-  if (scene === 'sunset') {
-    sky.addColorStop(0, '#fb7185');
-    sky.addColorStop(0.55, '#f97316');
-    sky.addColorStop(1, '#431407');
-  } else if (scene === 'galaxy') {
-    sky.addColorStop(0, '#090514');
-    sky.addColorStop(0.5, '#2e1065');
-    sky.addColorStop(1, '#020617');
-  } else if (scene === 'cyber-alley') {
-    sky.addColorStop(0, '#020617');
-    sky.addColorStop(0.6, '#1e1b4b');
-    sky.addColorStop(1, '#09090b');
-  } else if (scene === 'underwater') {
-    sky.addColorStop(0, '#0284c7');
-    sky.addColorStop(0.6, '#0369a1');
-    sky.addColorStop(1, '#082f49');
-  } else if (scene === 'volcano') {
-    sky.addColorStop(0, '#450a0a');
-    sky.addColorStop(0.6, '#7c2d12');
-    sky.addColorStop(1, '#1c1917');
-  } else if (scene === 'aurora') {
-    sky.addColorStop(0, '#022c22');
-    sky.addColorStop(0.5, '#064e3b');
-    sky.addColorStop(1, '#020617');
-  } else if (scene === 'sakura') {
-    sky.addColorStop(0, '#fbcfe8');
-    sky.addColorStop(0.5, '#f472b6');
-    sky.addColorStop(1, '#831843');
-  } else if (scene === 'synth-sun') {
-    sky.addColorStop(0, '#701a75');
-    sky.addColorStop(0.5, '#4c1d95');
-    sky.addColorStop(1, '#0f172a');
-  } else if (scene === 'studio-pro') {
-    sky.addColorStop(0, '#27272a');
-    sky.addColorStop(0.6, '#18181b');
-    sky.addColorStop(1, '#09090b');
-  } else if (scene === 'beach') {
-    sky.addColorStop(0, '#38bdf8');
-    sky.addColorStop(0.6, '#bae6fd');
-    sky.addColorStop(1, '#0e7490');
-  } else if (scene === 'mountains') {
-    sky.addColorStop(0, '#7dd3fc');
-    sky.addColorStop(0.58, '#dbeafe');
-    sky.addColorStop(1, '#334155');
-  } else if (scene === 'city') {
-    sky.addColorStop(0, '#111827');
-    sky.addColorStop(0.6, '#312e81');
-    sky.addColorStop(1, '#09090b');
-  } else if (scene === 'cozy-room') {
-    sky.addColorStop(0, '#fef3c7');
-    sky.addColorStop(0.55, '#d97706');
-    sky.addColorStop(1, '#451a03');
+  if (realImg) {
+    drawImageCover(ctx, realImg, width, height);
   } else {
-    sky.addColorStop(0, '#14532d');
-    sky.addColorStop(0.55, '#166534');
-    sky.addColorStop(1, '#052e16');
-  }
+    const sky = ctx.createLinearGradient(0, 0, 0, height);
+    if (scene === 'office') {
+      sky.addColorStop(0, '#1e293b');
+      sky.addColorStop(0.5, '#334155');
+      sky.addColorStop(1, '#0f172a');
+    } else if (scene === 'park') {
+      sky.addColorStop(0, '#052e16');
+      sky.addColorStop(0.5, '#15803d');
+      sky.addColorStop(1, '#022c22');
+    } else if (scene === 'car') {
+      sky.addColorStop(0, '#09090b');
+      sky.addColorStop(0.6, '#18181b');
+      sky.addColorStop(1, '#27272a');
+    } else if (scene === 'cafe') {
+      sky.addColorStop(0, '#451a03');
+      sky.addColorStop(0.5, '#78350f');
+      sky.addColorStop(1, '#292524');
+    } else if (scene === 'gaming') {
+      sky.addColorStop(0, '#581c87');
+      sky.addColorStop(0.5, '#0284c7');
+      sky.addColorStop(1, '#09090b');
+    } else if (scene === 'penthouse') {
+      sky.addColorStop(0, '#0f172a');
+      sky.addColorStop(0.5, '#1e1b4b');
+      sky.addColorStop(1, '#020617');
+    } else if (scene === 'sunset') {
+      sky.addColorStop(0, '#fb7185');
+      sky.addColorStop(0.55, '#f97316');
+      sky.addColorStop(1, '#431407');
+    } else if (scene === 'galaxy') {
+      sky.addColorStop(0, '#090514');
+      sky.addColorStop(0.5, '#2e1065');
+      sky.addColorStop(1, '#020617');
+    } else if (scene === 'cyber-alley') {
+      sky.addColorStop(0, '#020617');
+      sky.addColorStop(0.6, '#1e1b4b');
+      sky.addColorStop(1, '#09090b');
+    } else if (scene === 'underwater') {
+      sky.addColorStop(0, '#0284c7');
+      sky.addColorStop(0.6, '#0369a1');
+      sky.addColorStop(1, '#082f49');
+    } else if (scene === 'volcano') {
+      sky.addColorStop(0, '#450a0a');
+      sky.addColorStop(0.6, '#7c2d12');
+      sky.addColorStop(1, '#1c1917');
+    } else if (scene === 'aurora') {
+      sky.addColorStop(0, '#022c22');
+      sky.addColorStop(0.5, '#064e3b');
+      sky.addColorStop(1, '#020617');
+    } else if (scene === 'sakura') {
+      sky.addColorStop(0, '#fbcfe8');
+      sky.addColorStop(0.5, '#f472b6');
+      sky.addColorStop(1, '#831843');
+    } else if (scene === 'synth-sun') {
+      sky.addColorStop(0, '#701a75');
+      sky.addColorStop(0.5, '#4c1d95');
+      sky.addColorStop(1, '#0f172a');
+    } else if (scene === 'studio-pro') {
+      sky.addColorStop(0, '#27272a');
+      sky.addColorStop(0.6, '#18181b');
+      sky.addColorStop(1, '#09090b');
+    } else if (scene === 'beach') {
+      sky.addColorStop(0, '#38bdf8');
+      sky.addColorStop(0.6, '#bae6fd');
+      sky.addColorStop(1, '#0e7490');
+    } else if (scene === 'mountains') {
+      sky.addColorStop(0, '#7dd3fc');
+      sky.addColorStop(0.58, '#dbeafe');
+      sky.addColorStop(1, '#334155');
+    } else if (scene === 'city') {
+      sky.addColorStop(0, '#111827');
+      sky.addColorStop(0.6, '#312e81');
+      sky.addColorStop(1, '#09090b');
+    } else if (scene === 'cozy-room') {
+      sky.addColorStop(0, '#fef3c7');
+      sky.addColorStop(0.55, '#d97706');
+      sky.addColorStop(1, '#451a03');
+    } else {
+      sky.addColorStop(0, '#14532d');
+      sky.addColorStop(0.55, '#166534');
+      sky.addColorStop(1, '#052e16');
+    }
 
-  ctx.fillStyle = sky;
-  ctx.fillRect(0, 0, width, height);
-
-  if (scene === 'galaxy') {
-    // Starbursts & Planet with ring
-    ctx.fillStyle = '#ffffff';
-    for (let index = 0; index < 30; index += 1) {
-      const x = (index * 97 + drift * 3) % width;
-      const y = (index * 53) % height;
-      ctx.globalAlpha = 0.3 + Math.sin(time * 0.003 + index) * 0.4;
-      ctx.beginPath();
-      ctx.arc(x, y, (index % 3) + 1.5, 0, Math.PI * 2);
-      ctx.fill();
-    }
-    ctx.globalAlpha = 1;
-    // Glowing Ring Planet
-    ctx.fillStyle = '#c084fc';
-    ctx.beginPath();
-    ctx.arc(width * 0.8, height * 0.25, width * 0.08, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.strokeStyle = '#e9d5ff';
-    ctx.lineWidth = 4;
-    ctx.beginPath();
-    ctx.ellipse(width * 0.8, height * 0.25, width * 0.14, width * 0.03, -0.4, 0, Math.PI * 2);
-    ctx.stroke();
-  } else if (scene === 'aurora') {
-    // Waving polar aurora light ribbons
-    ctx.fillStyle = 'rgba(74, 222, 128, 0.35)';
-    ctx.beginPath();
-    ctx.moveTo(0, height * 0.3);
-    ctx.quadraticCurveTo(width * 0.3, height * 0.1, width * 0.6, height * 0.35);
-    ctx.quadraticCurveTo(width * 0.85, height * 0.5, width, height * 0.25);
-    ctx.lineTo(width, height * 0.55);
-    ctx.lineTo(0, height * 0.55);
-    ctx.fill();
-    ctx.fillStyle = 'rgba(192, 132, 252, 0.28)';
-    ctx.beginPath();
-    ctx.moveTo(0, height * 0.2);
-    ctx.quadraticCurveTo(width * 0.4, height * 0.4, width * 0.75, height * 0.15);
-    ctx.lineTo(width, height * 0.4);
-    ctx.lineTo(0, height * 0.4);
-    ctx.fill();
-  } else if (scene === 'synth-sun') {
-    // 80s Neon Grid Sun & Wireframe
-    ctx.fillStyle = '#f472b6';
-    ctx.beginPath();
-    ctx.arc(width * 0.5, height * 0.55, width * 0.2, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.strokeStyle = '#38bdf8';
-    ctx.lineWidth = 2;
-    for (let index = 0; index < 8; index += 1) {
-      const y = height * (0.6 + index * 0.05);
-      ctx.beginPath();
-      ctx.moveTo(0, y);
-      ctx.lineTo(width, y);
-      ctx.stroke();
-    }
-  } else if (scene === 'underwater') {
-    // Ocean light rays & seabed coral
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.12)';
-    for (let index = 0; index < 5; index += 1) {
-      const x = width * (0.15 + index * 0.18);
-      ctx.beginPath();
-      ctx.moveTo(x, 0);
-      ctx.lineTo(x + width * 0.1, height);
-      ctx.lineTo(x - width * 0.05, height);
-      ctx.fill();
-    }
-    ctx.fillStyle = '#0369a1';
-    ctx.fillRect(0, height * 0.8, width, height * 0.2);
-  } else if (scene === 'volcano') {
-    // Jagged volcano peaks & lava river lines
-    ctx.fillStyle = '#1c1917';
-    ctx.beginPath();
-    ctx.moveTo(0, height * 0.75);
-    ctx.lineTo(width * 0.3, height * 0.45);
-    ctx.lineTo(width * 0.5, height * 0.55);
-    ctx.lineTo(width * 0.75, height * 0.38);
-    ctx.lineTo(width, height * 0.75);
-    ctx.fill();
-    ctx.strokeStyle = '#ef4444';
-    ctx.lineWidth = 4;
-    ctx.beginPath();
-    ctx.moveTo(width * 0.3, height * 0.45);
-    ctx.lineTo(width * 0.35, height * 0.75);
-    ctx.stroke();
-  } else if (scene === 'sakura') {
-    // Falling cherry blossom petals
-    ctx.fillStyle = '#fbcfe8';
-    for (let index = 0; index < 22; index += 1) {
-      const x = (index * 61 + drift * 2) % width;
-      const y = (index * 47 + time * 0.05) % height;
-      ctx.beginPath();
-      ctx.ellipse(x, y, 6, 3, 0.4, 0, Math.PI * 2);
-      ctx.fill();
-    }
-  } else if (scene === 'studio-pro') {
-    // Soft rim spotlight halo
-    const spot = ctx.createRadialGradient(width * 0.5, height * 0.4, width * 0.05, width * 0.5, height * 0.4, width * 0.45);
-    spot.addColorStop(0, 'rgba(255, 255, 255, 0.18)');
-    spot.addColorStop(1, 'rgba(0, 0, 0, 0)');
-    ctx.fillStyle = spot;
+    ctx.fillStyle = sky;
     ctx.fillRect(0, 0, width, height);
-  } else if (scene === 'beach') {
-    ctx.fillStyle = '#fef3c7';
-    ctx.fillRect(0, height * 0.7, width, height * 0.3);
-    ctx.fillStyle = '#0e7490';
-    ctx.fillRect(0, height * 0.57, width, height * 0.16);
-    ctx.strokeStyle = 'rgba(255,255,255,0.7)';
-    ctx.lineWidth = 4;
-    for (let index = 0; index < 7; index += 1) {
-      const y = height * 0.6 + index * 18 + Math.sin(time * 0.002 + index) * 4;
+
+    if (scene === 'galaxy') {
+      ctx.fillStyle = '#ffffff';
+      for (let index = 0; index < 30; index += 1) {
+        const x = (index * 97 + drift * 3) % width;
+        const y = (index * 53) % height;
+        ctx.globalAlpha = 0.3 + Math.sin(time * 0.003 + index) * 0.4;
+        ctx.beginPath();
+        ctx.arc(x, y, (index % 3) + 1.5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = '#c084fc';
       ctx.beginPath();
-      ctx.moveTo(0, y);
-      ctx.quadraticCurveTo(width * 0.5, y - 12, width, y);
-      ctx.stroke();
-    }
-    ctx.strokeStyle = '#422006';
-    ctx.lineWidth = 12;
-    ctx.beginPath();
-    ctx.moveTo(width * 0.14, height * 0.76);
-    ctx.quadraticCurveTo(width * 0.18, height * 0.38, width * 0.34, height * 0.3);
-    ctx.stroke();
-    ctx.strokeStyle = '#166534';
-    ctx.lineWidth = 8;
-    for (let index = 0; index < 5; index += 1) {
+      ctx.arc(width * 0.8, height * 0.25, width * 0.08, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#e9d5ff';
+      ctx.lineWidth = 4;
       ctx.beginPath();
-      ctx.moveTo(width * 0.18, height * 0.42);
-      ctx.lineTo(width * (0.02 + index * 0.09), height * (0.25 + index * 0.02));
+      ctx.ellipse(width * 0.8, height * 0.25, width * 0.14, width * 0.03, -0.4, 0, Math.PI * 2);
       ctx.stroke();
-    }
-  } else if (scene === 'mountains') {
-    ctx.fillStyle = '#64748b';
-    ctx.beginPath();
-    ctx.moveTo(0, height * 0.68);
-    ctx.lineTo(width * 0.25, height * 0.28);
-    ctx.lineTo(width * 0.48, height * 0.68);
-    ctx.lineTo(width * 0.7, height * 0.2);
-    ctx.lineTo(width, height * 0.68);
-    ctx.fill();
-    ctx.fillStyle = '#1e293b';
-    ctx.beginPath();
-    ctx.moveTo(0, height * 0.78);
-    ctx.lineTo(width * 0.36, height * 0.4);
-    ctx.lineTo(width * 0.62, height * 0.78);
-    ctx.lineTo(width * 0.86, height * 0.38);
-    ctx.lineTo(width, height * 0.78);
-    ctx.fill();
-    ctx.fillStyle = 'rgba(255,255,255,0.25)';
-    ctx.fillRect(0, height * 0.67 + drift, width, height * 0.08);
-  } else if (scene === 'city') {
-    for (let index = 0; index < 9; index += 1) {
-      const buildingWidth = width * 0.12;
-      const x = index * buildingWidth;
-      const buildingHeight = height * (0.2 + (index % 4) * 0.08);
-      ctx.fillStyle = index % 2 ? '#1e1b4b' : '#172554';
-      ctx.fillRect(x, height * 0.72 - buildingHeight, buildingWidth - 4, buildingHeight);
-      ctx.fillStyle = index % 2 ? '#22d3ee' : '#f472b6';
-      for (let row = 0; row < 5; row += 1) {
-        ctx.fillRect(x + 12, height * 0.72 - buildingHeight + 20 + row * 28, 7, 10);
-        ctx.fillRect(x + 34, height * 0.72 - buildingHeight + 20 + row * 28, 7, 10);
+    } else if (scene === 'aurora') {
+      ctx.fillStyle = 'rgba(74, 222, 128, 0.35)';
+      ctx.beginPath();
+      ctx.moveTo(0, height * 0.3);
+      ctx.quadraticCurveTo(width * 0.3, height * 0.1, width * 0.6, height * 0.35);
+      ctx.quadraticCurveTo(width * 0.85, height * 0.5, width, height * 0.25);
+      ctx.lineTo(width, height * 0.55);
+      ctx.lineTo(0, height * 0.55);
+      ctx.fill();
+      ctx.fillStyle = 'rgba(192, 132, 252, 0.28)';
+      ctx.beginPath();
+      ctx.moveTo(0, height * 0.2);
+      ctx.quadraticCurveTo(width * 0.4, height * 0.4, width * 0.75, height * 0.15);
+      ctx.lineTo(width, height * 0.4);
+      ctx.lineTo(0, height * 0.4);
+      ctx.fill();
+    } else if (scene === 'synth-sun') {
+      ctx.fillStyle = '#f472b6';
+      ctx.beginPath();
+      ctx.arc(width * 0.5, height * 0.55, width * 0.2, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#38bdf8';
+      ctx.lineWidth = 2;
+      for (let index = 0; index < 8; index += 1) {
+        const y = height * (0.6 + index * 0.05);
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(width, y);
+        ctx.stroke();
       }
     }
-    ctx.fillStyle = 'rgba(34,211,238,0.3)';
-    ctx.fillRect(0, height * 0.73, width, height * 0.27);
-  } else if (scene === 'cozy-room') {
-    ctx.fillStyle = '#7c2d12';
-    ctx.fillRect(0, height * 0.72, width, height * 0.28);
-    ctx.fillStyle = '#451a03';
-    ctx.fillRect(width * 0.15, height * 0.18, width * 0.7, height * 0.36);
-    ctx.fillStyle = '#bae6fd';
-    ctx.fillRect(width * 0.22, height * 0.24, width * 0.56, height * 0.24);
-    ctx.strokeStyle = '#fef3c7';
-    ctx.lineWidth = 8;
-    ctx.strokeRect(width * 0.22, height * 0.24, width * 0.56, height * 0.24);
-    ctx.fillStyle = '#166534';
-    ctx.beginPath();
-    ctx.arc(width * 0.12, height * 0.68, width * 0.11, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = '#713f12';
-    ctx.fillRect(width * 0.09, height * 0.68, width * 0.06, height * 0.23);
-  } else {
-    ctx.fillStyle = '#052e16';
-    ctx.fillRect(0, height * 0.7, width, height * 0.3);
-    for (let index = 0; index < 12; index += 1) {
-      const x = ((index * width * 0.13 + drift) % (width + 100)) - 50;
-      const treeHeight = height * (0.22 + (index % 3) * 0.08);
-      ctx.fillStyle = '#422006';
-      ctx.fillRect(x, height * 0.72 - treeHeight * 0.25, 12, treeHeight * 0.5);
-      ctx.fillStyle = index % 2 ? '#15803d' : '#166534';
+  }
+
+  // --- SUBTLE REAL-TIME ANIMATED OVERLAY EFFECTS (REALITY & MOTION) ---
+  if (scene === 'office') {
+    const flare = ctx.createRadialGradient(width * 0.8, height * 0.2, 5, width * 0.8, height * 0.2, width * 0.45);
+    flare.addColorStop(0, 'rgba(255, 255, 255, 0.22)');
+    flare.addColorStop(1, 'rgba(255, 255, 255, 0)');
+    ctx.fillStyle = flare;
+    ctx.fillRect(0, 0, width, height);
+
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+    for (let i = 0; i < 12; i++) {
+      const px = (i * 73 + time * 0.015) % width;
+      const py = (i * 41 + Math.sin(time * 0.002 + i) * 20) % height;
       ctx.beginPath();
-      ctx.arc(x + 6, height * 0.7 - treeHeight * 0.35, treeHeight * 0.28, 0, Math.PI * 2);
+      ctx.arc(px, py, 1.5, 0, Math.PI * 2);
       ctx.fill();
     }
-    ctx.fillStyle = '#fde047';
-    for (let index = 0; index < 18; index += 1) {
-      const x = (index * 83 + drift * 2) % width;
-      const y = height * (0.18 + ((index * 37) % 56) / 100);
-      ctx.globalAlpha = 0.45 + Math.sin(time * 0.004 + index) * 0.3;
+  } else if (scene === 'park') {
+    ctx.fillStyle = 'rgba(250, 204, 21, 0.08)';
+    ctx.beginPath();
+    ctx.moveTo(width * 0.6, 0);
+    ctx.lineTo(width * 0.85, 0);
+    ctx.lineTo(width * 0.4, height);
+    ctx.lineTo(width * 0.15, height);
+    ctx.fill();
+
+    ctx.fillStyle = '#4ade80';
+    for (let i = 0; i < 14; i++) {
+      const lx = (i * 89 + drift * 3) % width;
+      const ly = (i * 67 + time * 0.03) % height;
+      ctx.globalAlpha = 0.5 + Math.sin(time * 0.003 + i) * 0.3;
       ctx.beginPath();
-      ctx.arc(x, y, 3, 0, Math.PI * 2);
+      ctx.ellipse(lx, ly, 4, 2, Math.sin(time * 0.002 + i), 0, Math.PI * 2);
       ctx.fill();
     }
     ctx.globalAlpha = 1;
-  }
-
-  if (scene === 'sunset') {
-    ctx.fillStyle = '#fde68a';
-    ctx.globalAlpha = 0.8;
-    ctx.beginPath();
-    ctx.arc(width * 0.75, height * 0.4, width * 0.1, 0, Math.PI * 2);
-    ctx.fill();
+  } else if (scene === 'car') {
+    ctx.lineWidth = 3;
+    for (let i = 0; i < 5; i++) {
+      const streakX = ((time * 0.6 + i * 140) % (width + 300)) - 150;
+      const streakY = height * (0.2 + i * 0.12);
+      ctx.strokeStyle = i % 2 ? 'rgba(245, 158, 11, 0.45)' : 'rgba(56, 189, 248, 0.35)';
+      ctx.beginPath();
+      ctx.moveTo(streakX, streakY);
+      ctx.lineTo(streakX + 90, streakY - 15);
+      ctx.stroke();
+    }
+  } else if (scene === 'cafe') {
+    ctx.fillStyle = 'rgba(251, 146, 60, 0.15)';
+    for (let i = 0; i < 8; i++) {
+      const bx = (i * 113) % width;
+      const by = (i * 79 + Math.sin(time * 0.001 + i) * 15) % height;
+      const size = 18 + (i % 4) * 12;
+      ctx.beginPath();
+      ctx.arc(bx, by, size, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  } else if (scene === 'gaming') {
+    const hue = (time * 0.04) % 360;
+    ctx.fillStyle = `hsla(${hue}, 90%, 50%, 0.12)`;
+    ctx.fillRect(0, 0, width, height);
+    ctx.fillStyle = `hsla(${(hue + 120) % 360}, 90%, 60%, 0.2)`;
+    ctx.fillRect(width * 0.05, height * 0.1, width * 0.9, 6);
+  } else if (scene === 'penthouse') {
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+    for (let i = 0; i < 20; i++) {
+      const px = (i * 57) % width;
+      const py = height * 0.45 + ((i * 31) % (height * 0.5));
+      ctx.globalAlpha = 0.3 + Math.sin(time * 0.005 + i) * 0.5;
+      ctx.beginPath();
+      ctx.arc(px, py, 1.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
     ctx.globalAlpha = 1;
   }
 };

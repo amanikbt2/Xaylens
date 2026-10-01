@@ -481,15 +481,13 @@ export const LensCarousel: React.FC<LensCarouselProps> = ({
           )}
 
           {/* CENTERED ACTIVE LENS TITLE BADGE */}
-          <View style={styles.activeLensTitleBadge} pointerEvents="none">
-            <Text style={styles.activeLensTitleText} numberOfLines={1}>
-              {isComboActive
-                ? comboLenses.length > 0
-                  ? comboLenses.map((l) => l.name).join(' + ')
-                  : 'Select Combo Layer'
-                : activeLens.name}
-            </Text>
-          </View>
+          {!isComboActive && (
+            <View style={styles.activeLensTitleBadge} pointerEvents="none">
+              <Text style={styles.activeLensTitleText} numberOfLines={1}>
+                {activeLens.name}
+              </Text>
+            </View>
+          )}
 
           {/* LOWER BAR: Bookmark on Left, Last Clip in Center (if available), + Combo & Explore on Right */}
           <View style={styles.lowerBar}>

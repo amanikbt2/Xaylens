@@ -46,7 +46,8 @@ export const LensAvatar: React.FC<LensAvatarProps> = React.memo(
     const fallbackIcon = (lens?.iconName || 'sparkles-outline') as keyof typeof Ionicons.glyphMap;
     const hasCustomArtwork = [
       'explore-more', 'normal', 'alien', 'angel-halo', 'bg-beach', 'bg-city', 'bg-cozy-room',
-      'bg-forest', 'bg-mountains', 'bg-sunset', 'big-eyes', 'big-nose', 'bunny', 'demon-horns',
+      'bg-forest', 'bg-mountains', 'bg-sunset', 'bg-office', 'bg-park', 'bg-car', 'bg-cafe',
+      'bg-gaming', 'bg-penthouse', 'big-eyes', 'big-nose', 'bunny', 'demon-horns',
       'fox-spirit', 'froggy', 'gigachad', 'kitty-cat', 'koala', 'lion-king', 'neon-cyborg',
       'panda-bear', 'puffy-cheeks', 'puppy', 'synthwave-80s', 'teddy-bear', 'tiger-stripes',
     ].includes(lensId);
@@ -523,6 +524,54 @@ export const LensAvatar: React.FC<LensAvatarProps> = React.memo(
               <Circle cx="14" cy="70" r="13" fill="#166534" />
               <Rect x="11" y="70" width="6" height="25" fill="#713f12" />
               <Path d="M 0 88 Q 50 78 100 88 L 100 100 L 0 100 Z" fill="#451a03" opacity="0.65" />
+            </G>
+          ) : lensId === 'bg-office' ? (
+            <G>
+              <Rect width="100" height="100" fill="#1e293b" />
+              <Rect x="15" y="15" width="70" height="50" fill="#334155" stroke="#94a3b8" strokeWidth="2" />
+              <Rect x="20" y="20" width="60" height="40" fill="#64748b" opacity="0.6" />
+              <Rect x="10" y="70" width="80" height="20" fill="#0f172a" />
+              <Path d="M 35 70 L 35 60 L 65 60 L 65 70 Z" fill="#3b82f6" opacity="0.8" />
+            </G>
+          ) : lensId === 'bg-park' ? (
+            <G>
+              <Rect width="100" height="100" fill="#38bdf8" />
+              <Circle cx="80" cy="25" r="14" fill="#fde047" opacity="0.9" />
+              <Circle cx="25" cy="70" r="28" fill="#15803d" />
+              <Circle cx="75" cy="65" r="32" fill="#166534" />
+              <Rect x="0" y="80" width="100" height="20" fill="#22c55e" />
+            </G>
+          ) : lensId === 'bg-car' ? (
+            <G>
+              <Rect width="100" height="100" fill="#09090b" />
+              <Path d="M 10 30 Q 50 15 90 30 L 100 80 L 0 80 Z" fill="#27272a" stroke="#f59e0b" strokeWidth="2" />
+              <Rect x="20" y="32" width="60" height="28" fill="#3f3f46" rx="4" />
+              <Circle cx="50" cy="78" r="16" fill="#18181b" stroke="#71717a" strokeWidth="3" />
+            </G>
+          ) : lensId === 'bg-cafe' ? (
+            <G>
+              <Rect width="100" height="100" fill="#451a03" />
+              <Circle cx="30" cy="30" r="12" fill="#fb923c" opacity="0.3" />
+              <Circle cx="70" cy="40" r="16" fill="#f59e0b" opacity="0.3" />
+              <Rect x="15" y="72" width="70" height="28" fill="#78350f" rx="4" />
+              <Path d="M 42 62 A 8 8 0 0 1 58 62 L 56 72 L 44 72 Z" fill="#fef3c7" />
+            </G>
+          ) : lensId === 'bg-gaming' ? (
+            <G>
+              <Rect width="100" height="100" fill="#09090b" />
+              <Rect x="10" y="15" width="80" height="6" fill="#ec4899" />
+              <Rect x="10" y="25" width="80" height="40" fill="#18181b" stroke="#06b6d4" strokeWidth="2" rx="4" />
+              <Path d="M 30 40 L 40 40 M 35 35 L 35 45" stroke="#a855f7" strokeWidth="3" strokeLinecap="round" />
+              <Circle cx="65" cy="40" r="4" fill="#f43f5e" />
+              <Circle cx="73" cy="40" r="4" fill="#38bdf8" />
+            </G>
+          ) : lensId === 'bg-penthouse' ? (
+            <G>
+              <Rect width="100" height="100" fill="#0f172a" />
+              <Rect x="0" y="0" width="100" height="100" fill="none" stroke="#8b5cf6" strokeWidth="3" opacity="0.6" />
+              <Path d="M 10 90 L 10 50 L 25 50 L 25 90 M 30 90 L 30 35 L 50 35 L 50 90 M 55 90 L 55 45 L 75 45 L 75 90 M 80 90 L 80 25 L 95 25 L 95 90" fill="#1e1b4b" stroke="#38bdf8" strokeWidth="1" />
+              <Circle cx="40" cy="45" r="1.5" fill="#fef08a" />
+              <Circle cx="65" cy="55" r="1.5" fill="#fef08a" />
             </G>
           ) : lensId === 'beauty-lipstick' ? (
             <G>

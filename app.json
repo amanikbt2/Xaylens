@@ -67,12 +67,6 @@
         }
       ],
       "./plugins/withPlayStoreDeobfuscation"
-    ],
-    "extra": {
-      "eas": {
-        "projectId": "2dbc0974-7351-4525-83aa-a9433cff7055"
-      }
-    },
-    "owner": "sliver2"
+    ]
   }
 }

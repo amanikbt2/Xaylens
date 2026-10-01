@@ -1,4 +1,5 @@
 import { FaceLandmarks, Lens } from '../types/lens';
+import { getWarpedLandmarks } from '../utils/landmarkWarper';
 
 /**
  * High-performance Canvas 2D renderer for all AR overlays, face mesh, 3D feature overlays,
@@ -11,11 +12,12 @@ export const drawOverlayToCanvas2D = (
   lensInput: Lens | Lens[],
   width: number,
   height: number,
-  landmarks: FaceLandmarks,
+  rawLandmarks: FaceLandmarks,
   now: number
 ) => {
   if (!lensInput) return;
   const lensList = Array.isArray(lensInput) ? lensInput : [lensInput];
+  const landmarks = getWarpedLandmarks(rawLandmarks, lensInput);
 
   for (const lens of lensList) {
     if (!lens || lens.id === 'normal') continue;
