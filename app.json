@@ -19,7 +19,7 @@
     },
     "android": {
       "package": "com.amanikbt1.xaylens",
-      "versionCode": 4,
+      "versionCode": 25,
       "adaptiveIcon": {
         "backgroundColor": "#09090b",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -67,7 +67,8 @@
           }
         }
       ],
-      "./plugins/withPlayStoreDeobfuscation"
+      "./plugins/withPlayStoreDeobfuscation",
+      "./plugins/withMlKitFaceModel"
     ],
     "extra": {
       "eas": {

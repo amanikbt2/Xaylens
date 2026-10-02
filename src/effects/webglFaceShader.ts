@@ -284,18 +284,30 @@ export class WebVideoFaceDetector {
         const filesetResolver = await vision.FilesetResolver.forVisionTasks(
           'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm'
         );
-        this.mediaPipeLandmarker = await vision.FaceLandmarker.createFromOptions(
-          filesetResolver,
-          {
-            baseOptions: {
-              modelAssetPath:
-                'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task',
-              delegate: 'GPU',
-            },
-            runningMode: 'VIDEO',
-            numFaces: 1,
-          }
-        );
+        const modelAssetPath =
+          'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task';
+        const createOptions = (delegate: 'GPU' | 'CPU') => ({
+          baseOptions: {
+            modelAssetPath,
+            delegate,
+          },
+          runningMode: 'VIDEO',
+          numFaces: 1,
+        });
+
+        try {
+          this.mediaPipeLandmarker = await vision.FaceLandmarker.createFromOptions(
+            filesetResolver,
+            createOptions('GPU')
+          );
+        } catch {
+          // Android browsers may expose WebGL but still reject the GPU delegate.
+          // CPU keeps the full 478-point model instead of using rough motion tracking.
+          this.mediaPipeLandmarker = await vision.FaceLandmarker.createFromOptions(
+            filesetResolver,
+            createOptions('CPU')
+          );
+        }
       }
     } catch {
       // Offline or blocked CDN — Tier 2 & Tier 3 handle tracking seamlessly

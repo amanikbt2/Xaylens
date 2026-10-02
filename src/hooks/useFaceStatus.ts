@@ -108,6 +108,8 @@ export const useFaceStatus = (
       setStatusState('lighting', 'Low light • Check lighting');
     } else if (faceWidth !== undefined && faceWidth > 0 && faceWidth < 0.16) {
       setStatusState('center', 'Move closer to camera...');
+    } else if (hasFace && trackingQuality === 'poor') {
+      setStatusState('identified', 'Face identified ✓');
     } else if (trackingQuality === 'poor') {
       setStatusState('retrying', 'Tracking lost, retrying...');
     } else if (hasFace && trackingQuality === 'perfect') {
