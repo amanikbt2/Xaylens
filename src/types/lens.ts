@@ -78,7 +78,29 @@ export interface LensConfig {
       | 'car'
       | 'cafe'
       | 'gaming'
-      | 'penthouse';
+      | 'penthouse'
+      | 'desert'
+      | 'snow-cabin'
+      | 'waterfall'
+      | 'rainforest'
+      | 'savanna'
+      | 'northern-coast'
+      | 'lavender-field'
+      | 'bamboo-garden'
+      | 'ancient-ruins'
+      | 'space-station'
+      | 'moon-base'
+      | 'mars-colony'
+      | 'cloud-city'
+      | 'castle-hall'
+      | 'library'
+      | 'art-gallery'
+      | 'concert-stage'
+      | 'rooftop-night'
+      | 'street-market'
+      | 'underwater-city';
+    imageUri?: string;
+    videoUri?: string;
     removeBackground?: boolean;
   };
 }

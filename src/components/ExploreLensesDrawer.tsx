@@ -15,6 +15,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Lens, LensCategory } from '../types/lens';
 import { LensSquareCard } from './LensSquareCard';
 import { Colors } from '../constants/colors';
+import { customBackgroundLens } from '../lenses';
 
 interface ExploreLensesDrawerProps {
   visible: boolean;
@@ -53,7 +54,11 @@ export const ExploreLensesDrawer: React.FC<ExploreLensesDrawerProps> = ({
   const [activeTab, setActiveTab] = useState<FilterTab>('all');
 
   const filteredLenses = useMemo(() => {
-    return lenses.filter((lens) => {
+    const availableLenses = activeTab === 'background'
+      ? [customBackgroundLens, ...lenses.filter((lens) => lens.id !== customBackgroundLens.id)]
+      : lenses;
+
+    return availableLenses.filter((lens) => {
       // Tab filter
       if (activeTab === 'favorites') {
         if (!favoriteIds.includes(lens.id)) return false;

@@ -1,9 +1,10 @@
-import React, { useRef, useState, useCallback, useMemo } from 'react';
+import React, { useRef, useState, useCallback, useMemo, useEffect } from 'react';
 import {
   View,
   StyleSheet,
   Text,
   ActivityIndicator,
+  TouchableOpacity,
   Platform,
   PanResponder,
   Dimensions,
@@ -20,12 +21,15 @@ import { CameraErrorView } from '../components/CameraErrorView';
 import { MediaPreviewModal } from '../components/MediaPreviewModal';
 import { SettingsScreen } from './SettingsScreen';
 import { useCamera } from '../hooks/useCamera';
-import { useLens } from '../hooks/useLens';
+import { CategoryFilter, useLens } from '../hooks/useLens';
 import { useRecording } from '../hooks/useRecording';
 import { usePermissions } from '../hooks/usePermissions';
 import { useFaceStatus } from '../hooks/useFaceStatus';
 import { Colors } from '../constants/colors';
 import { CapturedMedia } from '../types/camera';
+import * as ImagePicker from 'expo-image-picker';
+import { CUSTOM_BACKGROUND_LENS_ID, createCustomBackgroundLens } from '../lenses';
+import { Lens } from '../types/lens';
 
 export const CameraScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
@@ -97,6 +101,55 @@ export const CameraScreen: React.FC = () => {
   const [isPreviewVisible, setIsPreviewVisible] = useState(false);
   const [isSettingsVisible, setIsSettingsVisible] = useState(false);
   const [isExploreVisible, setIsExploreVisible] = useState(false);
+  const [isBackgroundVideoPaused, setIsBackgroundVideoPaused] = useState(false);
+  const [isBackgroundVideoAudioEnabled, setIsBackgroundVideoAudioEnabled] = useState(false);
+  const [backgroundVideoRestartToken, setBackgroundVideoRestartToken] = useState(0);
+  const backgroundVideoUri = activeLens.config.background?.videoUri;
+
+  const isBackgroundVideo = Boolean(backgroundVideoUri);
+
+  useEffect(() => {
+    setIsBackgroundVideoPaused(false);
+  }, [activeLens.id, backgroundVideoUri]);
+
+  const handleToggleBackgroundVideo = useCallback(() => {
+    setIsBackgroundVideoPaused((paused) => !paused);
+  }, []);
+
+  const handleToggleBackgroundVideoAudio = useCallback(() => {
+    setIsBackgroundVideoAudioEnabled((enabled) => !enabled);
+  }, []);
+
+  const handleRestartBackgroundVideo = useCallback(() => {
+    setIsBackgroundVideoPaused(false);
+    setBackgroundVideoRestartToken((token) => token + 1);
+  }, []);
+
+  const handleSelectExploreLens = useCallback(
+    async (lens: Lens, tab?: CategoryFilter) => {
+      if (lens.id !== CUSTOM_BACKGROUND_LENS_ID) {
+        injectAndSelectLens(lens, facing, tab);
+        return;
+      }
+
+      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permission.granted) return;
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images', 'videos'],
+        allowsEditing: false,
+        aspect: [9, 16],
+        quality: 1,
+      });
+
+      if (!result.canceled && result.assets[0]?.uri) {
+        const uri = result.assets[0].uri;
+        const mediaType = result.assets[0].type === 'video' ? 'video' : 'image';
+        injectAndSelectLens(createCustomBackgroundLens(uri, mediaType), facing, 'background');
+      }
+    },
+    [facing, injectAndSelectLens]
+  );
 
   // Video Recording Hook
   const handleMaxDuration = useCallback(async () => {
@@ -118,6 +171,10 @@ export const CameraScreen: React.FC = () => {
     resumeRecording,
     stopRecording,
   } = useRecording(handleMaxDuration);
+
+  useEffect(() => {
+    if (!isRecording) setIsBackgroundVideoAudioEnabled(false);
+  }, [isRecording]);
 
   // Toggle Pause / Resume during video recording
   const handleTogglePause = useCallback(async () => {
@@ -259,6 +316,9 @@ export const CameraScreen: React.FC = () => {
               activeLens={activeLens}
               comboLenses={comboLenses}
               isRecording={isRecording}
+              backgroundVideoPaused={isBackgroundVideoPaused}
+              backgroundVideoAudioEnabled={isBackgroundVideoAudioEnabled}
+              backgroundVideoRestartToken={backgroundVideoRestartToken}
               active={!isPreviewVisible}
               onCameraReady={handleCameraReady}
               onMountError={handleCameraError}
@@ -266,6 +326,55 @@ export const CameraScreen: React.FC = () => {
               style={StyleSheet.absoluteFill}
             />
           </View>
+
+          {isBackgroundVideo && isRecording && (
+            <View style={styles.backgroundVideoControls}>
+              <TouchableOpacity
+                style={styles.backgroundVideoPauseButton}
+                onPress={handleToggleBackgroundVideo}
+                activeOpacity={0.8}
+                accessibilityRole="button"
+                accessibilityLabel={isBackgroundVideoPaused ? 'Resume background video' : 'Pause background video'}
+              >
+                <Ionicons
+                  name={isBackgroundVideoPaused ? 'play' : 'pause'}
+                  size={16}
+                  color={Colors.white}
+                />
+                <Text style={styles.backgroundVideoPauseText}>
+                  {isBackgroundVideoPaused ? 'Resume background' : 'Pause background'}
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.backgroundVideoPauseButton}
+                onPress={handleToggleBackgroundVideoAudio}
+                activeOpacity={0.8}
+                accessibilityRole="button"
+                accessibilityLabel={isBackgroundVideoAudioEnabled ? 'Mute background video and use microphone' : 'Use background video audio and mute microphone'}
+              >
+                <Ionicons
+                  name={isBackgroundVideoAudioEnabled ? 'volume-high' : 'volume-mute'}
+                  size={16}
+                  color={Colors.white}
+                />
+                <Text style={styles.backgroundVideoPauseText}>
+                  {isBackgroundVideoAudioEnabled ? 'Video sound' : 'Mic sound'}
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.backgroundVideoPauseButton}
+                onPress={handleRestartBackgroundVideo}
+                activeOpacity={0.8}
+                accessibilityRole="button"
+                accessibilityLabel="Restart background video"
+              >
+                <Ionicons name="play-skip-back" size={16} color={Colors.white} />
+                <Text style={styles.backgroundVideoPauseText}>Restart background</Text>
+              </TouchableOpacity>
+            </View>
+          )}
 
           {/* TOP MINIMAL FLOATING CONTROLS: Completely hidden during recording for pure screen */}
           {!isRecording && (
@@ -320,7 +429,7 @@ export const CameraScreen: React.FC = () => {
               hasPreviewMedia={!!previewMedia}
               categoryFilter={categoryFilter}
               onResetCategory={() => setCategory('all')}
-              onSelectLens={(lens) => selectLens(lens, facing)}
+              onSelectLens={(lens) => handleSelectExploreLens(lens, categoryFilter)}
               onToggleFavorite={() => toggleFavorite(activeLens.id)}
               onOpenExplore={() => setIsExploreVisible(true)}
               onOpenPreview={() => setIsPreviewVisible(true)}
@@ -356,7 +465,7 @@ export const CameraScreen: React.FC = () => {
         lenses={allLenses}
         activeLens={activeLens}
         favoriteIds={favoriteIds}
-        onSelectLens={(lens, tab) => injectAndSelectLens(lens, facing, tab)}
+        onSelectLens={handleSelectExploreLens}
         onToggleFavorite={toggleFavorite}
         onClose={() => setIsExploreVisible(false)}
       />
@@ -426,6 +535,30 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     marginLeft: 6,
+  },
+  backgroundVideoPauseButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+    backgroundColor: 'rgba(12, 12, 16, 0.82)',
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.22)',
+    paddingHorizontal: 13,
+    paddingVertical: 8,
+  },
+  backgroundVideoControls: {
+    position: 'absolute',
+    top: 112,
+    alignSelf: 'center',
+    zIndex: 35,
+    flexDirection: 'row',
+    gap: 8,
+  },
+  backgroundVideoPauseText: {
+    color: Colors.white,
+    fontSize: 12,
+    fontWeight: '700',
   },
   bottomControlsWrapper: {
     position: 'absolute',

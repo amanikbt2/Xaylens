@@ -9,6 +9,10 @@ interface WebBackgroundReplacementProps {
   width: number;
   height: number;
   enabled: boolean;
+  backgroundVideoPaused?: boolean;
+  backgroundVideoAudioEnabled?: boolean;
+  backgroundVideoRestartToken?: number;
+  onVideoElement?: (video: HTMLVideoElement | null) => void;
   onReady: (ready: boolean) => void;
   onLoadingChange?: (loading: boolean) => void;
 }
@@ -30,6 +34,26 @@ const SCENE_IMAGE_URLS: Partial<Record<Scene, string>> = {
   mountains: 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=1200&q=80',
   forest: 'https://images.unsplash.com/photo-1448375240586-882707db888b?auto=format&fit=crop&w=1200&q=80',
   'studio-pro': 'https://images.unsplash.com/photo-1598899134739-24c46f58b8c0?auto=format&fit=crop&w=1200&q=80',
+  desert: 'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1200&q=80',
+  'snow-cabin': 'https://images.unsplash.com/photo-1517825738774-7de9363ef735?auto=format&fit=crop&w=1200&q=80',
+  waterfall: 'https://images.unsplash.com/photo-1432405972618-c60b0225b8f9?auto=format&fit=crop&w=1200&q=80',
+  rainforest: 'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?auto=format&fit=crop&w=1200&q=80',
+  savanna: 'https://images.unsplash.com/photo-1549366021-9f761d450615?auto=format&fit=crop&w=1200&q=80',
+  'northern-coast': 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1200&q=80',
+  'lavender-field': 'https://images.unsplash.com/photo-1499002238440-d264edd596ec?auto=format&fit=crop&w=1200&q=80',
+  'bamboo-garden': 'https://images.unsplash.com/photo-1528360983277-13d401cdc186?auto=format&fit=crop&w=1200&q=80',
+  'ancient-ruins': 'https://images.unsplash.com/photo-1548013146-72479768bada?auto=format&fit=crop&w=1200&q=80',
+  'space-station': 'https://images.unsplash.com/photo-1446776811953-b23d57bd21aa?auto=format&fit=crop&w=1200&q=80',
+  'moon-base': 'https://images.unsplash.com/photo-1534791547706-5e9323b9e9c1?auto=format&fit=crop&w=1200&q=80',
+  'mars-colony': 'https://images.unsplash.com/photo-1614728894747-a83421e2b9c9?auto=format&fit=crop&w=1200&q=80',
+  'cloud-city': 'https://images.unsplash.com/photo-1519608487953-e999c86e7455?auto=format&fit=crop&w=1200&q=80',
+  'castle-hall': 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=1200&q=80',
+  library: 'https://images.unsplash.com/photo-1521587760476-6c12a4b040da?auto=format&fit=crop&w=1200&q=80',
+  'art-gallery': 'https://images.unsplash.com/photo-1561214115-f2f134cc4912?auto=format&fit=crop&w=1200&q=80',
+  'concert-stage': 'https://images.unsplash.com/photo-1501386761578-eac5c94b800a?auto=format&fit=crop&w=1200&q=80',
+  'rooftop-night': 'https://images.unsplash.com/photo-1519501025264-65ba15a82390?auto=format&fit=crop&w=1200&q=80',
+  'street-market': 'https://images.unsplash.com/photo-1488459716781-31db52582fe9?auto=format&fit=crop&w=1200&q=80',
+  'underwater-city': 'https://images.unsplash.com/photo-1530053969600-caed2596d242?auto=format&fit=crop&w=1200&q=80',
 };
 
 const imageCache: Map<string, HTMLImageElement> = new Map();
@@ -39,7 +63,9 @@ const getPreloadedImage = (url: string): HTMLImageElement | null => {
   let img = imageCache.get(url);
   if (!img) {
     img = new Image();
-    img.crossOrigin = 'anonymous';
+    if (url.startsWith('http')) {
+      img.crossOrigin = 'anonymous';
+    }
     img.src = url;
     imageCache.set(url, img);
   }
@@ -63,12 +89,37 @@ const drawImageCover = (
   ctx.drawImage(img, cx, cy, nw, nh);
 };
 
-const drawScene = (ctx: CanvasRenderingContext2D, width: number, height: number, scene: Scene, time: number) => {
+const drawVideoCover = (
+  ctx: CanvasRenderingContext2D,
+  video: HTMLVideoElement,
+  cw: number,
+  ch: number
+) => {
+  const iw = video.videoWidth || video.clientWidth;
+  const ih = video.videoHeight || video.clientHeight;
+  if (!iw || !ih) return;
+  const scale = Math.max(cw / iw, ch / ih);
+  const nw = iw * scale;
+  const nh = ih * scale;
+  ctx.drawImage(video, (cw - nw) / 2, (ch - nh) / 2, nw, nh);
+};
+
+const drawScene = (
+  ctx: CanvasRenderingContext2D,
+  width: number,
+  height: number,
+  scene: Scene,
+  time: number,
+  customVideo?: HTMLVideoElement,
+  customImageUri?: string
+) => {
   const drift = Math.sin(time * 0.00025) * width * 0.04;
-  const imageUrl = SCENE_IMAGE_URLS[scene];
+  const imageUrl = customImageUri || SCENE_IMAGE_URLS[scene];
   const realImg = imageUrl ? getPreloadedImage(imageUrl) : null;
 
-  if (realImg) {
+  if (customVideo) {
+    drawVideoCover(ctx, customVideo, width, height);
+  } else if (realImg) {
     drawImageCover(ctx, realImg, width, height);
   } else {
     const sky = ctx.createLinearGradient(0, 0, 0, height);
@@ -330,8 +381,63 @@ export const WebBackgroundReplacement: React.FC<WebBackgroundReplacementProps> =
   enabled,
   onReady,
   onLoadingChange,
+  backgroundVideoPaused = false,
+  backgroundVideoAudioEnabled = false,
+  backgroundVideoRestartToken = 0,
+  onVideoElement,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const backgroundVideoRef = useRef<HTMLVideoElement | null>(null);
+  const backgroundVideoPausedRef = useRef(backgroundVideoPaused);
+  const backgroundVideoAudioEnabledRef = useRef(backgroundVideoAudioEnabled);
+  backgroundVideoPausedRef.current = backgroundVideoPaused;
+  backgroundVideoAudioEnabledRef.current = backgroundVideoAudioEnabled;
+
+  useEffect(() => {
+    const uri = lens.config.background?.videoUri;
+    if (!enabled || !uri || typeof document === 'undefined') {
+      backgroundVideoRef.current = null;
+      return;
+    }
+
+    const video = document.createElement('video');
+    video.src = uri;
+    video.loop = true;
+    video.muted = true;
+    video.playsInline = true;
+    video.preload = 'auto';
+    backgroundVideoRef.current = video;
+    onVideoElement?.(video);
+    video.muted = !backgroundVideoAudioEnabledRef.current;
+    video.load();
+    if (!backgroundVideoPausedRef.current) video.play().catch(() => {});
+
+    return () => {
+      video.pause();
+      video.removeAttribute('src');
+      video.load();
+      if (backgroundVideoRef.current === video) backgroundVideoRef.current = null;
+      onVideoElement?.(null);
+    };
+  }, [enabled, lens.config.background?.videoUri, onVideoElement]);
+
+  useEffect(() => {
+    const video = backgroundVideoRef.current;
+    if (!video) return;
+    video.muted = !backgroundVideoAudioEnabled;
+    if (backgroundVideoPaused) {
+      video.pause();
+    } else {
+      video.play().catch(() => {});
+    }
+  }, [backgroundVideoAudioEnabled, backgroundVideoPaused]);
+
+  useEffect(() => {
+    const video = backgroundVideoRef.current;
+    if (!video || !backgroundVideoRestartToken) return;
+    video.currentTime = 0;
+    video.play().catch(() => {});
+  }, [backgroundVideoRestartToken]);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -388,7 +494,17 @@ export const WebBackgroundReplacement: React.FC<WebBackgroundReplacementProps> =
       maskContext.putImageData(maskImage, 0, 0);
 
       outputContext.clearRect(0, 0, output.width, output.height);
-      drawScene(outputContext, output.width, output.height, sceneForLens(lens), time);
+      drawScene(
+        outputContext,
+        output.width,
+        output.height,
+        sceneForLens(lens),
+        time,
+        backgroundVideoRef.current && backgroundVideoRef.current.readyState >= 2
+          ? backgroundVideoRef.current
+          : undefined,
+        lens.config.background?.imageUri
+      );
       personContext.clearRect(0, 0, personCanvas.width, personCanvas.height);
       personContext.globalCompositeOperation = 'source-over';
       personContext.drawImage(video, 0, 0, personCanvas.width, personCanvas.height);

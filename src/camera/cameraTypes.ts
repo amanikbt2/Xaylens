@@ -8,6 +8,9 @@ export interface CameraViewProps {
   activeLens: Lens;
   comboLenses?: Lens[];
   isRecording: boolean;
+  backgroundVideoPaused?: boolean;
+  backgroundVideoAudioEnabled?: boolean;
+  backgroundVideoRestartToken?: number;
   active?: boolean;
   onCameraReady?: () => void;
   onMountError?: (error: string) => void;

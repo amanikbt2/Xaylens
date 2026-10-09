@@ -182,7 +182,9 @@ export const LensCarousel: React.FC<LensCarouselProps> = ({
     [carouselData.length]
   );
 
-  // When swipe scroll ends and settles on a lens
+  // When swipe momentum ends and settles on a lens. The carousel deliberately
+  // settles only once here; snapping during onScrollEndDrag makes Android
+  // fight its own momentum and visibly bounce at the list boundaries.
   const handleScrollEnd = useCallback(
     (e: NativeSyntheticEvent<NativeScrollEvent>) => {
       const offsetX = e.nativeEvent.contentOffset.x;
@@ -192,8 +194,8 @@ export const LensCarousel: React.FC<LensCarouselProps> = ({
         Math.min(carouselData.length - 1, Math.round(offsetX / LENS_ITEM_WIDTH))
       );
 
-      // Snap cleanly to the exact interval
-      scrollToLensIndex(centerIdx, true);
+      // Correct any fractional offset without starting another animation.
+      scrollToLensIndex(centerIdx, false);
 
       const targetItem = carouselData[centerIdx];
       if (targetItem) {
@@ -397,11 +399,13 @@ export const LensCarousel: React.FC<LensCarouselProps> = ({
               style={{ width: '100%', height: 108 }}
               snapToOffsets={snapOffsets}
               decelerationRate="fast"
-              disableIntervalMomentum={true}
+              disableIntervalMomentum={false}
+              bounces={false}
+              alwaysBounceHorizontal={false}
+              overScrollMode="never"
               scrollEventThrottle={16}
               onScrollBeginDrag={handleScrollBeginDrag}
               onScroll={handleScroll}
-              onScrollEndDrag={handleScrollEnd}
               onMomentumScrollEnd={handleScrollEnd}
               onContentSizeChange={() => {
                 if (isRecording) return;

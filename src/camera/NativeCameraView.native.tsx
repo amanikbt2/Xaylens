@@ -28,6 +28,35 @@ import { FaceLandmarks } from '../types/lens';
 
 const clamp = (value: number) => Math.max(0, Math.min(1, value));
 
+/**
+ * Face detector points are expressed in the camera frame. The preview uses
+ * resizeMode="cover", so the frame must be scaled and cropped before it can
+ * be used by the SVG overlay. Keeping this conversion here also makes the
+ * front-camera mirror explicit instead of relying on detector internals.
+ */
+const createPreviewMapper = (
+  frameWidth: number,
+  frameHeight: number,
+  viewWidth: number,
+  viewHeight: number,
+  mirrored: boolean
+) => {
+  const scale = Math.max(viewWidth / frameWidth, viewHeight / frameHeight);
+  const renderedWidth = frameWidth * scale;
+  const renderedHeight = frameHeight * scale;
+  const offsetX = (viewWidth - renderedWidth) / 2;
+  const offsetY = (viewHeight - renderedHeight) / 2;
+
+  return (point: { x: number; y: number }) => {
+    const x = point.x * scale + offsetX;
+    const y = point.y * scale + offsetY;
+    return {
+      x: mirrored ? viewWidth - x : x,
+      y,
+    };
+  };
+};
+
 export const PlatformCameraView = forwardRef<CameraViewRef, CameraViewProps>(
   (
     {
@@ -58,9 +87,11 @@ export const PlatformCameraView = forwardRef<CameraViewRef, CameraViewProps>(
     const onFaceStatusChangeRef = useRef(onFaceStatusChange);
     const onMountErrorRef = useRef(onMountError);
     const onCameraReadyRef = useRef(onCameraReady);
+    const facingRef = useRef(facing);
     onFaceStatusChangeRef.current = onFaceStatusChange;
     onMountErrorRef.current = onMountError;
     onCameraReadyRef.current = onCameraReady;
+    facingRef.current = facing;
 
     const device = useCameraDevice(facing === 'front' ? 'front' : 'back');
     const cameraPermission = useCameraPermission();
@@ -114,7 +145,27 @@ export const PlatformCameraView = forwardRef<CameraViewRef, CameraViewProps>(
 
         const viewWidth = dimensionsRef.current.width || face.frameWidth || 1;
         const viewHeight = dimensionsRef.current.height || face.frameHeight || 1;
-        const bounds = face.bounds;
+        const frameWidth = face.frameWidth || viewWidth;
+        const frameHeight = face.frameHeight || viewHeight;
+        const mapToPreview = createPreviewMapper(
+          frameWidth,
+          frameHeight,
+          viewWidth,
+          viewHeight,
+          facingRef.current === 'front'
+        );
+        const sourceBounds = face.bounds;
+        const boundsTopLeft = mapToPreview({ x: sourceBounds.x, y: sourceBounds.y });
+        const boundsBottomRight = mapToPreview({
+          x: sourceBounds.x + sourceBounds.width,
+          y: sourceBounds.y + sourceBounds.height,
+        });
+        const bounds = {
+          x: Math.min(boundsTopLeft.x, boundsBottomRight.x),
+          y: Math.min(boundsTopLeft.y, boundsBottomRight.y),
+          width: Math.abs(boundsBottomRight.x - boundsTopLeft.x),
+          height: Math.abs(boundsBottomRight.y - boundsTopLeft.y),
+        };
         const fallback = {
           x: bounds.x + bounds.width * 0.5,
           y: bounds.y + bounds.height * 0.5,
@@ -122,10 +173,15 @@ export const PlatformCameraView = forwardRef<CameraViewRef, CameraViewProps>(
         const point = (
           candidate: { x: number; y: number } | undefined,
           fallbackPoint: typeof fallback
-        ) => ({
-          x: clamp((candidate?.x ?? fallbackPoint.x) / viewWidth),
-          y: clamp((candidate?.y ?? fallbackPoint.y) / viewHeight),
-        });
+        ) => {
+          const mapped = candidate
+            ? mapToPreview(candidate)
+            : fallbackPoint;
+          return {
+            x: clamp(mapped.x / viewWidth),
+            y: clamp(mapped.y / viewHeight),
+          };
+        };
         const nativeLandmarks = face.landmarks;
         const eyeY = bounds.y + bounds.height * 0.38;
         const leftEye = point(nativeLandmarks?.LEFT_EYE, {
@@ -144,14 +200,14 @@ export const PlatformCameraView = forwardRef<CameraViewRef, CameraViewProps>(
             x: fallback.x,
             y: bounds.y + bounds.height * 0.72,
           }),
-          chin: {
-            x: clamp(fallback.x / viewWidth),
-            y: clamp((bounds.y + bounds.height) / viewHeight),
-          },
-          forehead: {
-            x: clamp(fallback.x / viewWidth),
-            y: clamp(bounds.y / viewHeight),
-          },
+          chin: point(undefined, {
+            x: fallback.x,
+            y: bounds.y + bounds.height,
+          }),
+          forehead: point(undefined, {
+            x: fallback.x,
+            y: bounds.y,
+          }),
           leftEar: point(nativeLandmarks?.LEFT_EAR, {
             x: bounds.x,
             y: fallback.y,
@@ -251,7 +307,7 @@ export const PlatformCameraView = forwardRef<CameraViewRef, CameraViewProps>(
             cameraFacing={facing}
             mirrorMode={facing === 'front' ? 'on' : 'off'}
             resizeMode="cover"
-            autoMode
+            autoMode={false}
             performanceMode="fast"
             outputResolution="preview"
             runLandmarks

@@ -31,11 +31,21 @@ import { FaceLandmarks } from '../types/lens';
 import { WebBackgroundReplacement } from './WebBackgroundReplacement.web';
 
 export const PlatformCameraView = forwardRef<CameraViewRef, CameraViewProps>(
-  ({ facing, flash, activeLens, comboLenses, active = true, onCameraReady, onMountError, onFaceStatusChange, style }, ref) => {
+  ({ facing, flash, activeLens, comboLenses, active = true, backgroundVideoPaused = false, backgroundVideoAudioEnabled = false, backgroundVideoRestartToken = 0, onCameraReady, onMountError, onFaceStatusChange, style }, ref) => {
     const videoRef = useRef<HTMLVideoElement | null>(null);
     const glCanvasRef = useRef<HTMLCanvasElement | null>(null);
     const compCanvasRef = useRef<HTMLCanvasElement | null>(null);
     const backgroundCanvasRef = useRef<HTMLCanvasElement | null>(null);
+    const backgroundVideoElementRef = useRef<HTMLVideoElement | null>(null);
+    const backgroundAudioGraphRef = useRef<{
+      context: AudioContext;
+      destination: MediaStreamAudioDestinationNode;
+      micGain: GainNode;
+      videoGain: GainNode;
+      video: HTMLVideoElement;
+    } | null>(null);
+    const backgroundVideoAudioEnabledRef = useRef(backgroundVideoAudioEnabled);
+    backgroundVideoAudioEnabledRef.current = backgroundVideoAudioEnabled;
     const streamRef = useRef<MediaStream | null>(null);
     const mediaRecorderRef = useRef<MediaRecorder | null>(null);
     const recordedChunksRef = useRef<Blob[]>([]);
@@ -58,6 +68,32 @@ export const PlatformCameraView = forwardRef<CameraViewRef, CameraViewProps>(
 
     const facingRef = useRef(facing);
     facingRef.current = facing;
+
+    const syncBackgroundAudio = useCallback(() => {
+      const graph = backgroundAudioGraphRef.current;
+      const video = backgroundVideoElementRef.current;
+      const videoAudioEnabled = backgroundVideoAudioEnabledRef.current;
+      if (video) video.muted = !videoAudioEnabled;
+      if (graph) {
+        graph.micGain.gain.value = videoAudioEnabled ? 0 : 1;
+        graph.videoGain.gain.value = videoAudioEnabled ? 1 : 0;
+      }
+      streamRef.current?.getAudioTracks().forEach((track) => {
+        track.enabled = !videoAudioEnabled;
+      });
+    }, []);
+
+    useEffect(() => {
+      syncBackgroundAudio();
+    }, [backgroundVideoAudioEnabled, syncBackgroundAudio]);
+
+    const handleBackgroundVideoElement = useCallback(
+      (video: HTMLVideoElement | null) => {
+        backgroundVideoElementRef.current = video;
+        syncBackgroundAudio();
+      },
+      [syncBackgroundAudio]
+    );
 
     const trackerRef = useRef(new FaceTracker());
     const detectorRef = useRef<WebVideoFaceDetector | null>(null);
@@ -381,9 +417,37 @@ export const PlatformCameraView = forwardRef<CameraViewRef, CameraViewProps>(
           ) {
             recordStream = targetCanvas.captureStream(30);
             if (streamRef.current) {
-              streamRef.current.getAudioTracks().forEach((audioTrack) => {
-                recordStream?.addTrack(audioTrack);
-              });
+              const microphoneTracks = streamRef.current.getAudioTracks();
+              const backgroundVideo = backgroundVideoElementRef.current;
+              const AudioContextConstructor =
+                window.AudioContext || (window as any).webkitAudioContext;
+
+              if (backgroundVideo && AudioContextConstructor) {
+                let graph = backgroundAudioGraphRef.current;
+                if (!graph || graph.video !== backgroundVideo) {
+                  const context = new AudioContextConstructor();
+                  const destination = context.createMediaStreamDestination();
+                  const micSource = context.createMediaStreamSource(new MediaStream(microphoneTracks));
+                  const micGain = context.createGain();
+                  const videoSource = context.createMediaElementSource(backgroundVideo);
+                  const videoGain = context.createGain();
+                  micSource.connect(micGain).connect(destination);
+                  videoSource.connect(videoGain);
+                  videoGain.connect(destination);
+                  videoGain.connect(context.destination);
+                  graph = { context, destination, micGain, videoGain, video: backgroundVideo };
+                  backgroundAudioGraphRef.current = graph;
+                }
+                await graph.context.resume();
+                syncBackgroundAudio();
+                graph.destination.stream.getAudioTracks().forEach((audioTrack) => {
+                  recordStream?.addTrack(audioTrack);
+                });
+              } else {
+                microphoneTracks.forEach((audioTrack) => {
+                  recordStream?.addTrack(audioTrack);
+                });
+              }
             }
           } else {
             recordStream = streamRef.current;
@@ -556,6 +620,10 @@ export const PlatformCameraView = forwardRef<CameraViewRef, CameraViewProps>(
           width={dimensions.width}
           height={dimensions.height}
           enabled={isBackgroundLens}
+          backgroundVideoPaused={backgroundVideoPaused}
+          backgroundVideoAudioEnabled={backgroundVideoAudioEnabled}
+          backgroundVideoRestartToken={backgroundVideoRestartToken}
+          onVideoElement={handleBackgroundVideoElement}
           onReady={setBackgroundReady}
           onLoadingChange={setBackgroundLoading}
         />

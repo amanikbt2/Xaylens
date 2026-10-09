@@ -11,6 +11,7 @@ import { swirlFaceLens } from './definitions/swirlFace';
 import { puppyLens } from './definitions/puppy';
 import { bunnyLens } from './definitions/bunny';
 import { funnyGlassesLens } from './definitions/funnyGlasses';
+import { customBackgroundLens, createCustomBackgroundLens, CUSTOM_BACKGROUND_LENS_ID } from './customBackground';
 
 export const INITIAL_LENSES: Lens[] = ALL_50_LENSES;
 
@@ -31,4 +32,7 @@ export {
   puppyLens,
   bunnyLens,
   funnyGlassesLens,
+  customBackgroundLens,
+  createCustomBackgroundLens,
+  CUSTOM_BACKGROUND_LENS_ID,
 };

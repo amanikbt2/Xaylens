@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Lens, LensCategory } from '../types/lens';
-import { ALL_50_LENSES, normalLens } from '../lenses';
+import { ALL_50_LENSES, customBackgroundLens, normalLens } from '../lenses';
 import { triggerLensSelectHaptic } from '../utils/haptics';
 
 const FAVORITES_STORAGE_KEY = '@xaylens_favorite_lenses';
@@ -127,11 +127,15 @@ export const useLens = (initialLensId: string = 'normal') => {
 
     // Filter strictly to the chosen category
     const catLenses = ALL_50_LENSES.filter((l) => l.category === categoryFilter);
+    if (categoryFilter === 'background') {
+      const customItem = activeLens.id === customBackgroundLens.id ? activeLens : customBackgroundLens;
+      return [normalItem, customItem, ...catLenses];
+    }
     if (!catLenses.some((l) => l.id === 'normal')) {
       return [normalItem, ...catLenses];
     }
     return catLenses;
-  }, [categoryFilter, favoriteIds]);
+  }, [activeLens, categoryFilter, favoriteIds]);
 
   const selectLens = useCallback(
     (lens: Lens, cameraFacing: 'front' | 'back' = 'front') => {
