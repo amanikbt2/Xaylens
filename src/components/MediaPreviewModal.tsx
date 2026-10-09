@@ -374,6 +374,35 @@ export const MediaPreviewModal: React.FC<MediaPreviewModalProps> = ({
     }
   }, [visible, media]);
 
+  // Keep the web editor video element stable. Assigning `src` in JSX on every
+  // editor update can cause browsers to reload the recorded clip and flicker.
+  const editorMediaType = media?.type;
+  const editorMediaUri = media?.uri;
+  useEffect(() => {
+    if (Platform.OS !== 'web' || !visible || editorMediaType !== 'video' || !editorMediaUri) return;
+    const video = webVideoRef.current;
+    if (!video) return;
+
+    const nextUri = editorMediaUri;
+    if (video.src !== nextUri) {
+      video.src = nextUri;
+      video.load();
+    }
+
+    const playVideo = () => {
+      video.play().catch(() => {});
+    };
+    if (video.readyState >= 2) {
+      playVideo();
+    } else {
+      video.addEventListener('loadeddata', playVideo, { once: true });
+    }
+
+    return () => {
+      video.removeEventListener('loadeddata', playVideo);
+    };
+  }, [visible, editorMediaType, editorMediaUri]);
+
   // Apply real-time playback speed, pitch shift, and WebAudio Voice Changer DSP on Web
   useEffect(() => {
     if (Platform.OS !== 'web' || !visible) return;
@@ -722,10 +751,10 @@ export const MediaPreviewModal: React.FC<MediaPreviewModalProps> = ({
             ) : Platform.OS === 'web' ? (
               <video
                 ref={webVideoRef}
-                src={media.uri}
                 autoPlay
                 loop
                 playsInline
+                preload="auto"
                 style={{
                   width: '100%',
                   height: '100%',

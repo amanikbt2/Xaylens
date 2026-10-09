@@ -4,6 +4,8 @@ import { Lens } from '../types/lens';
 
 interface WebBackgroundReplacementProps {
   videoRef: React.RefObject<HTMLVideoElement | null>;
+  sourceCanvasRef?: React.RefObject<HTMLCanvasElement | null>;
+  mirrored?: boolean;
   outputCanvasRef?: React.MutableRefObject<HTMLCanvasElement | null>;
   lens: Lens;
   width: number;
@@ -374,6 +376,8 @@ const getOrInitSegmenter = async (): Promise<any> => {
 
 export const WebBackgroundReplacement: React.FC<WebBackgroundReplacementProps> = ({
   videoRef,
+  sourceCanvasRef,
+  mirrored = false,
   outputCanvasRef,
   lens,
   width,
@@ -507,9 +511,23 @@ export const WebBackgroundReplacement: React.FC<WebBackgroundReplacementProps> =
       );
       personContext.clearRect(0, 0, personCanvas.width, personCanvas.height);
       personContext.globalCompositeOperation = 'source-over';
-      personContext.drawImage(video, 0, 0, personCanvas.width, personCanvas.height);
+      const personSource = sourceCanvasRef?.current;
+      personContext.drawImage(
+        personSource || video,
+        0,
+        0,
+        personCanvas.width,
+        personCanvas.height
+      );
       personContext.globalCompositeOperation = 'destination-in';
+      const mirrorMask = mirrored && Boolean(sourceCanvasRef?.current);
+      if (mirrorMask) {
+        personContext.save();
+        personContext.translate(personCanvas.width, 0);
+        personContext.scale(-1, 1);
+      }
       personContext.drawImage(maskCanvas, 0, 0, personCanvas.width, personCanvas.height);
+      if (mirrorMask) personContext.restore();
       personContext.globalCompositeOperation = 'source-over';
       outputContext.drawImage(personCanvas, 0, 0);
 
@@ -568,7 +586,7 @@ export const WebBackgroundReplacement: React.FC<WebBackgroundReplacementProps> =
       onReady(false);
       onLoadingChange?.(false);
     };
-  }, [enabled, height, lens, onLoadingChange, onReady, outputCanvasRef, videoRef, width]);
+  }, [enabled, height, lens, mirrored, onLoadingChange, onReady, outputCanvasRef, sourceCanvasRef, videoRef, width]);
 
   return enabled ? <canvas ref={canvasRef} style={styles.canvas} /> : null;
 };

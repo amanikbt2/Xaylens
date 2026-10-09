@@ -30,6 +30,23 @@ import { DEFAULT_LANDMARKS } from '../effects/effectTypes';
 import { FaceLandmarks } from '../types/lens';
 import { WebBackgroundReplacement } from './WebBackgroundReplacement.web';
 
+const getSupportedRecorderMimeType = (): string => {
+  if (typeof MediaRecorder === 'undefined') return '';
+
+  // Prefer broadly playable H.264/AAC MP4 when the browser exposes it.
+  // Chromium commonly does not, so keep WebM as a real (not mislabeled)
+  // fallback rather than changing the file extension after recording.
+  const candidates = [
+    'video/mp4;codecs=avc1.42E01E,mp4a.40.2',
+    'video/mp4',
+    'video/webm;codecs=vp8,opus',
+    'video/webm;codecs=vp9,opus',
+    'video/webm',
+  ];
+
+  return candidates.find((mimeType) => MediaRecorder.isTypeSupported(mimeType)) || '';
+};
+
 export const PlatformCameraView = forwardRef<CameraViewRef, CameraViewProps>(
   ({ facing, flash, activeLens, comboLenses, active = true, backgroundVideoPaused = false, backgroundVideoAudioEnabled = false, backgroundVideoRestartToken = 0, onCameraReady, onMountError, onFaceStatusChange, style }, ref) => {
     const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -49,6 +66,7 @@ export const PlatformCameraView = forwardRef<CameraViewRef, CameraViewProps>(
     const streamRef = useRef<MediaStream | null>(null);
     const mediaRecorderRef = useRef<MediaRecorder | null>(null);
     const recordedChunksRef = useRef<Blob[]>([]);
+    const recordingMimeTypeRef = useRef('video/webm');
     const isRecordingRef = useRef(false);
 
     const onFaceStatusChangeRef = useRef(onFaceStatusChange);
@@ -65,6 +83,19 @@ export const PlatformCameraView = forwardRef<CameraViewRef, CameraViewProps>(
 
     const activeLensIdRef = useRef(activeLens.id);
     activeLensIdRef.current = activeLens.id;
+
+    const backgroundLens = [...(comboLenses || []), activeLens]
+      .filter((lens) => lens.category === 'background')
+      .slice(-1)[0] || null;
+    const isBackgroundLens = Boolean(backgroundLens);
+    const hasFaceLens = [...(comboLenses || []), activeLens].some(
+      (lens) => lens.id !== 'normal' && lens.category !== 'background'
+    );
+    const skipHiddenBackgroundWebGL = isBackgroundLens && !hasFaceLens;
+    const isBackgroundLensRef = useRef(isBackgroundLens);
+    const skipHiddenBackgroundWebGLRef = useRef(skipHiddenBackgroundWebGL);
+    isBackgroundLensRef.current = isBackgroundLens;
+    skipHiddenBackgroundWebGLRef.current = skipHiddenBackgroundWebGL;
 
     const facingRef = useRef(facing);
     facingRef.current = facing;
@@ -105,8 +136,6 @@ export const PlatformCameraView = forwardRef<CameraViewRef, CameraViewProps>(
       useState<FaceLandmarks>(DEFAULT_LANDMARKS);
     const [backgroundReady, setBackgroundReady] = useState(false);
     const [backgroundLoading, setBackgroundLoading] = useState(false);
-    const isBackgroundLens = activeLens.category === 'background';
-
     const handleLayout = (e: LayoutChangeEvent) => {
       const { width, height } = e.nativeEvent.layout;
       if (width > 0 && height > 0) {
@@ -264,6 +293,13 @@ export const PlatformCameraView = forwardRef<CameraViewRef, CameraViewProps>(
         const dt = Math.min(now - lastFrameTime, 60);
         lastFrameTime = now;
 
+        // A background-only lens is already rendered by the segmentation
+        // canvas, so avoid face detection and hidden WebGL work in that mode.
+        if (skipHiddenBackgroundWebGLRef.current) {
+          animId = requestAnimationFrame(renderFrame);
+          return;
+        }
+
         // Detect real face & upper-body coordinates from video stream (~28fps)
         if (
           now - lastDetectTime > 35 &&
@@ -378,7 +414,7 @@ export const PlatformCameraView = forwardRef<CameraViewRef, CameraViewProps>(
     useImperativeHandle(ref, () => ({
       takePictureAsync: async (): Promise<CapturedMedia | null> => {
         const canvas =
-          activeLensRef.current.category === 'background'
+          isBackgroundLensRef.current
             ? backgroundCanvasRef.current || compCanvasRef.current || glCanvasRef.current
             : compCanvasRef.current || glCanvasRef.current;
         if (!canvas) return null;
@@ -408,7 +444,7 @@ export const PlatformCameraView = forwardRef<CameraViewRef, CameraViewProps>(
           // Record directly from the composited canvas stream (+ microphone audio)
           let recordStream: MediaStream | null = null;
           const targetCanvas =
-            activeLensRef.current.category === 'background'
+            isBackgroundLensRef.current
               ? backgroundCanvasRef.current || compCanvasRef.current || glCanvasRef.current
               : compCanvasRef.current || glCanvasRef.current;
           if (
@@ -455,16 +491,19 @@ export const PlatformCameraView = forwardRef<CameraViewRef, CameraViewProps>(
 
           if (!recordStream) return;
 
-          const options: MediaRecorderOptions = {
-            mimeType: 'video/webm;codecs=vp9,opus',
-          };
+          const preferredMimeType = getSupportedRecorderMimeType();
           let recorder: MediaRecorder;
 
           try {
-            recorder = new MediaRecorder(recordStream, options);
+            recorder = preferredMimeType
+              ? new MediaRecorder(recordStream, { mimeType: preferredMimeType })
+              : new MediaRecorder(recordStream);
           } catch {
             recorder = new MediaRecorder(recordStream);
           }
+
+          recordingMimeTypeRef.current =
+            recorder.mimeType || preferredMimeType || 'video/webm';
 
           recorder.ondataavailable = (event) => {
             if (event.data && event.data.size > 0) {
@@ -505,7 +544,7 @@ export const PlatformCameraView = forwardRef<CameraViewRef, CameraViewProps>(
         const recorder = mediaRecorderRef.current;
         if (!recorder) {
           const canvas =
-            activeLensRef.current.category === 'background'
+            isBackgroundLensRef.current
               ? backgroundCanvasRef.current || compCanvasRef.current || glCanvasRef.current
               : compCanvasRef.current || glCanvasRef.current;
           if (canvas) {
@@ -532,6 +571,7 @@ export const PlatformCameraView = forwardRef<CameraViewRef, CameraViewProps>(
               id: `video_web_${Date.now()}`,
               type: 'video',
               uri: videoUrl,
+              mimeType: blob.type || recordingMimeTypeRef.current,
               timestamp: Date.now(),
               lensId: activeLens.id,
               lensName: activeLens.name,
@@ -540,7 +580,7 @@ export const PlatformCameraView = forwardRef<CameraViewRef, CameraViewProps>(
 
           const timeoutId = setTimeout(() => {
             const blob = new Blob(recordedChunksRef.current, {
-              type: 'video/webm',
+              type: recordingMimeTypeRef.current,
             });
             finish(blob);
           }, 600);
@@ -548,7 +588,7 @@ export const PlatformCameraView = forwardRef<CameraViewRef, CameraViewProps>(
           recorder.onstop = () => {
             clearTimeout(timeoutId);
             const blob = new Blob(recordedChunksRef.current, {
-              type: 'video/webm',
+              type: recordingMimeTypeRef.current,
             });
             finish(blob);
           };
@@ -558,13 +598,13 @@ export const PlatformCameraView = forwardRef<CameraViewRef, CameraViewProps>(
               recorder.stop();
             } else {
               const blob = new Blob(recordedChunksRef.current, {
-                type: 'video/webm',
+                type: recordingMimeTypeRef.current,
               });
               finish(blob);
             }
           } catch {
             const blob = new Blob(recordedChunksRef.current, {
-              type: 'video/webm',
+              type: recordingMimeTypeRef.current,
             });
             finish(blob);
           }
@@ -615,8 +655,10 @@ export const PlatformCameraView = forwardRef<CameraViewRef, CameraViewProps>(
 
         <WebBackgroundReplacement
           videoRef={videoRef}
+          sourceCanvasRef={hasFaceLens ? glCanvasRef : undefined}
+          mirrored={facing === 'front'}
           outputCanvasRef={backgroundCanvasRef}
-          lens={activeLens}
+          lens={backgroundLens || activeLens}
           width={dimensions.width}
           height={dimensions.height}
           enabled={isBackgroundLens}
@@ -638,7 +680,7 @@ export const PlatformCameraView = forwardRef<CameraViewRef, CameraViewProps>(
         )}
 
         {/* Front flash screen illumination */}
-        {flash === 'on' && (
+        {facing === 'front' && flash === 'on' && (
           <View style={[styles.frontFlashOverlay, { pointerEvents: 'none' }]} />
         )}
 
@@ -686,7 +728,9 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(255, 252, 235, 0.22)',
+    backgroundColor: 'rgba(255, 252, 235, 0.10)',
+    borderWidth: 18,
+    borderColor: 'rgba(255, 255, 255, 0.72)',
   },
   lensLoadingOverlay: {
     position: 'absolute',

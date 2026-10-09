@@ -16,14 +16,11 @@ export const useCamera = () => {
     setFacing((prev) => (prev === 'front' ? 'back' : 'front'));
   }, []);
 
-  // Cycle flash: off -> on -> auto -> off
+  // Flash is intentionally a simple on/off toggle. Front cameras use the
+  // screen-flash effect; rear cameras use the hardware torch.
   const cycleFlash = useCallback(() => {
     triggerShutterPressHaptic();
-    setFlash((prev) => {
-      if (prev === 'off') return 'on';
-      if (prev === 'on') return 'auto';
-      return 'off';
-    });
+    setFlash((prev) => (prev === 'off' ? 'on' : 'off'));
   }, []);
 
   // Switch capture mode (photo vs video)

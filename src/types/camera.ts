@@ -1,11 +1,12 @@
 export type CameraFacing = 'front' | 'back';
-export type FlashMode = 'off' | 'on' | 'auto';
+export type FlashMode = 'off' | 'on';
 export type CaptureMode = 'photo' | 'video';
 
 export interface CapturedMedia {
   id: string;
   type: 'photo' | 'video';
   uri: string;
+  mimeType?: string;
   width?: number;
   height?: number;
   durationSeconds?: number;

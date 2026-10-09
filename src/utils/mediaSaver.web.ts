@@ -5,6 +5,15 @@ export interface SaveMediaResult {
   message: string;
 }
 
+const getFileExtension = (media: CapturedMedia): string => {
+  if (media.type !== 'video') return 'jpg';
+
+  const mimeType = media.mimeType?.toLowerCase() || '';
+  if (mimeType.includes('mp4')) return 'mp4';
+  if (mimeType.includes('quicktime')) return 'mov';
+  return 'webm';
+};
+
 export const saveMediaToDevice = async (media: CapturedMedia): Promise<SaveMediaResult> => {
   try {
     if (typeof document === 'undefined') {
@@ -12,12 +21,18 @@ export const saveMediaToDevice = async (media: CapturedMedia): Promise<SaveMedia
     }
     const a = document.createElement('a');
     a.href = media.uri;
-    const ext = media.type === 'video' ? 'webm' : 'jpg';
+    const ext = getFileExtension(media);
     a.download = `XayLens_${Date.now()}.${ext}`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
-    return { success: true, message: 'Media downloaded successfully.' };
+    return {
+      success: true,
+      message:
+        media.type === 'video'
+          ? `Video downloaded as ${ext.toUpperCase()}.`
+          : 'Media downloaded successfully.',
+    };
   } catch (err: unknown) {
     const errorMsg = err instanceof Error ? err.message : 'Failed to download media.';
     return {

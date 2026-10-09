@@ -312,6 +312,7 @@ export const PlatformCameraView = forwardRef<CameraViewRef, CameraViewProps>(
             outputResolution="preview"
             runLandmarks
             trackingEnabled
+            torchMode={facing === 'back' && flash === 'on' ? 'on' : 'off'}
             onFacesDetected={handleFacesDetected}
             onError={handleDetectorError}
             outputs={cameraOutputs}
@@ -324,6 +325,7 @@ export const PlatformCameraView = forwardRef<CameraViewRef, CameraViewProps>(
         canRenderCamera,
         device,
         facing,
+        flash,
         handleCameraStarted,
         handleDetectorError,
         handleFacesDetected,
@@ -334,7 +336,7 @@ export const PlatformCameraView = forwardRef<CameraViewRef, CameraViewProps>(
       takePictureAsync: async (): Promise<CapturedMedia | null> => {
         try {
           const photo = await photoOutput.capturePhotoToFile(
-            { flashMode: flash === 'auto' ? 'off' : flash },
+            { flashMode: flash },
             {}
           );
           return {
@@ -414,6 +416,10 @@ export const PlatformCameraView = forwardRef<CameraViewRef, CameraViewProps>(
             landmarks={landmarks}
           />
         )}
+
+        {facing === 'front' && flash === 'on' && (
+          <View style={styles.frontFlashOverlay} pointerEvents="none" />
+        )}
       </View>
     );
   }
@@ -433,6 +439,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 10,
     backgroundColor: '#000000',
+  },
+  frontFlashOverlay: {
+    ...StyleSheet.absoluteFill,
+    backgroundColor: 'rgba(255, 252, 235, 0.12)',
+    borderWidth: 18,
+    borderColor: 'rgba(255, 255, 255, 0.72)',
   },
   statusText: {
     color: '#ffffff',

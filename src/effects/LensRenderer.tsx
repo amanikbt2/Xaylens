@@ -41,8 +41,13 @@ export const LensRenderer: React.FC<LensRendererProps> = React.memo(
     const trackerRef = useRef<FaceTracker>(new FaceTracker());
     const animFrameRef = useRef<number | null>(null);
     const lastTimeRef = useRef<number>(Date.now());
+    const hasFaceLens = Boolean(
+      (comboLenses && comboLenses.some((item) => item.category !== 'background' && item.id !== 'normal')) ||
+        (lens && lens.category !== 'background' && lens.id !== 'normal')
+    );
 
     useEffect(() => {
+      if (!hasFaceLens) return;
       let active = true;
 
       const loop = () => {
@@ -69,7 +74,7 @@ export const LensRenderer: React.FC<LensRendererProps> = React.memo(
           cancelAnimationFrame(animFrameRef.current);
         }
       };
-    }, []);
+    }, [hasFaceLens]);
 
     const activeList = React.useMemo(() => {
       if (comboLenses && comboLenses.length > 0) {
@@ -78,12 +83,22 @@ export const LensRenderer: React.FC<LensRendererProps> = React.memo(
       return lens && lens.id !== 'normal' ? [lens] : [];
     }, [lens, comboLenses]);
 
-    if (activeList.length === 0) {
+    // The web background compositor already owns the full-screen background.
+    // Do not let the background lens' decorative gradient cover face lenses.
+    const renderList = React.useMemo(
+      () =>
+        Platform.OS === 'web'
+          ? activeList.filter((item) => item.category !== 'background')
+          : activeList,
+      [activeList]
+    );
+
+    if (renderList.length === 0) {
       return null;
     }
 
     const rawLandmarks = externalLandmarks || trackingState.landmarks;
-    const landmarks = getWarpedLandmarks(rawLandmarks, activeList);
+    const landmarks = getWarpedLandmarks(rawLandmarks, renderList);
     const noseX = landmarks.nose.x * width;
     const noseY = landmarks.nose.y * height;
     const eyeLX = landmarks.leftEye.x * width;
@@ -95,13 +110,13 @@ export const LensRenderer: React.FC<LensRendererProps> = React.memo(
     const faceScale = (landmarks.faceWidth * width) / 200;
     const isWeb = Platform.OS === 'web';
 
-    const hasLens = (id: string) => activeList.some((l) => l.id === id);
+    const hasLens = (id: string) => renderList.some((l) => l.id === id);
 
     return (
       <View
         style={[StyleSheet.absoluteFill, { width, height, pointerEvents: 'none' }]}
       >
-        {activeList.map((l) => (
+        {renderList.map((l) => (
           <CreativeLensOverlay
             key={l.id}
             lens={l}

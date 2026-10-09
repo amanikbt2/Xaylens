@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, StyleSheet, TouchableOpacity, Text } from 'react-native';
+import { View, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../constants/colors';
 import { FlashMode } from '../types/camera';
@@ -25,19 +25,11 @@ export const CameraControls: React.FC<CameraControlsProps> = ({
   faceStatus,
 }) => {
   const getFlashIcon = () => {
-    switch (flash) {
-      case 'on':
-        return 'flash';
-      case 'auto':
-        return 'flash-outline';
-      case 'off':
-      default:
-        return 'flash-off';
-    }
+    return flash === 'on' ? 'flash' : 'flash-off';
   };
 
   const getFlashColor = () => {
-    return flash === 'on' || flash === 'auto' ? Colors.accentYellow : Colors.white;
+    return flash === 'on' ? Colors.accentYellow : Colors.white;
   };
 
   return (
@@ -73,11 +65,10 @@ export const CameraControls: React.FC<CameraControlsProps> = ({
           style={styles.pillActionBtn}
           onPress={onCycleFlash}
           activeOpacity={0.7}
-          accessibilityLabel={`Flash mode: currently ${flash}`}
+          accessibilityLabel={`Flash: ${flash === 'on' ? 'on' : 'off'}`}
           accessibilityRole="button"
         >
           <Ionicons name={getFlashIcon()} size={21} color={getFlashColor()} />
-          {flash === 'auto' && <Text style={styles.autoBadge}>A</Text>}
         </TouchableOpacity>
 
         <View style={styles.pillDivider} />
@@ -130,13 +121,5 @@ const styles = StyleSheet.create({
     width: 22,
     height: 1,
     backgroundColor: 'rgba(255, 255, 255, 0.12)',
-  },
-  autoBadge: {
-    position: 'absolute',
-    bottom: 6,
-    right: 6,
-    color: Colors.accentYellow,
-    fontSize: 9,
-    fontWeight: '800',
   },
 });

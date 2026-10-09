@@ -104,7 +104,10 @@ export const CameraScreen: React.FC = () => {
   const [isBackgroundVideoPaused, setIsBackgroundVideoPaused] = useState(false);
   const [isBackgroundVideoAudioEnabled, setIsBackgroundVideoAudioEnabled] = useState(false);
   const [backgroundVideoRestartToken, setBackgroundVideoRestartToken] = useState(0);
-  const backgroundVideoUri = activeLens.config.background?.videoUri;
+  const backgroundLens = [...comboLenses, activeLens]
+    .filter((lens) => lens.category === 'background')
+    .slice(-1)[0];
+  const backgroundVideoUri = backgroundLens?.config.background?.videoUri;
 
   const isBackgroundVideo = Boolean(backgroundVideoUri);
 
@@ -457,6 +460,8 @@ export const CameraScreen: React.FC = () => {
       <SettingsScreen
         visible={isSettingsVisible}
         onClose={() => setIsSettingsVisible(false)}
+        favoriteIds={favoriteIds}
+        allLenses={allLenses}
       />
 
       {/* Explore Lenses Bottom Drawer */}

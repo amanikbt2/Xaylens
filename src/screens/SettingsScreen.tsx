@@ -9,6 +9,8 @@ import {
   TouchableOpacity,
   Switch,
   Alert,
+  Share,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../constants/colors';
@@ -16,14 +18,60 @@ import { createShadow } from '../utils/styles';
 import { APP_CONFIG } from '../constants/config';
 import { useSettings } from '../hooks/useSettings';
 import { FlashMode, CameraFacing } from '../types/camera';
+import { Lens } from '../types/lens';
 
 interface SettingsScreenProps {
   visible: boolean;
   onClose: () => void;
+  favoriteIds: string[];
+  allLenses: Lens[];
 }
 
-export const SettingsScreen: React.FC<SettingsScreenProps> = ({ visible, onClose }) => {
+export const SettingsScreen: React.FC<SettingsScreenProps> = ({
+  visible,
+  onClose,
+  favoriteIds,
+  allLenses,
+}) => {
   const { preferences, updatePreference, resetPreferences } = useSettings();
+
+  const handleDownloadFavorites = async () => {
+    const favoriteLenses = favoriteIds
+      .map((id) => allLenses.find((lens) => lens.id === id))
+      .filter((lens): lens is Lens => Boolean(lens));
+
+    if (favoriteLenses.length === 0) {
+      Alert.alert('No Favorites Yet', 'Favorite some lenses first, then try again.');
+      return;
+    }
+
+    const content = favoriteLenses
+      .map((lens) => `${lens.id} - ${lens.name}`)
+      .join(',\n');
+
+    if (Platform.OS === 'web') {
+      const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = `XayLens-favorites-${Date.now()}.txt`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      document.body.removeChild(anchor);
+      URL.revokeObjectURL(url);
+      Alert.alert('Favorites Downloaded', `${favoriteLenses.length} favorite lenses were exported.`);
+      return;
+    }
+
+    try {
+      await Share.share({
+        title: 'XayLens favorite lenses',
+        message: content,
+      });
+    } catch {
+      Alert.alert('Export Failed', 'Unable to share your favorite lenses.');
+    }
+  };
 
   const handleReset = () => {
     Alert.alert(
@@ -73,7 +121,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ visible, onClose
                 <Text style={styles.rowSubtitle}>Initial flash mode when starting camera</Text>
               </View>
               <View style={styles.segmented}>
-                {(['off', 'auto', 'on'] as FlashMode[]).map((mode) => (
+                {(['off', 'on'] as FlashMode[]).map((mode) => (
                   <TouchableOpacity
                     key={mode}
                     style={[
@@ -177,6 +225,27 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ visible, onClose
             </View>
           </View>
 
+          {/* FAVORITES */}
+          <Text style={styles.sectionHeader}>MY LENSES</Text>
+          <View style={styles.card}>
+            <TouchableOpacity
+              style={styles.exportRow}
+              onPress={handleDownloadFavorites}
+              activeOpacity={0.7}
+            >
+              <View style={styles.exportIcon}>
+                <Ionicons name="download-outline" size={20} color={Colors.accentCyan} />
+              </View>
+              <View style={styles.exportCopy}>
+                <Text style={styles.rowTitle}>Download Favorites</Text>
+                <Text style={styles.rowSubtitle}>
+                  Export favorite lens IDs and names as a TXT file ({favoriteIds.length})
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={19} color={Colors.textMuted} />
+            </TouchableOpacity>
+          </View>
+
           {/* ABOUT & PRIVACY */}
           <Text style={styles.sectionHeader}>ABOUT XAYLENS</Text>
           <View style={styles.card}>
@@ -277,6 +346,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingVertical: 8,
+  },
+  exportRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 4,
+  },
+  exportIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(34, 211, 238, 0.12)',
+    marginRight: 12,
+  },
+  exportCopy: {
+    flex: 1,
+    paddingRight: 8,
   },
   rowTitle: {
     color: Colors.textPrimary,
