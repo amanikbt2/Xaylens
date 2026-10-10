@@ -17,12 +17,23 @@ import {
   useVideoOutput,
 } from 'react-native-vision-camera';
 import {
-  Camera as FaceDetectorCamera,
+  useFaceDetectorOutput,
   Face as NativeFace,
 } from 'react-native-vision-camera-face-detector';
+// @ts-ignore
+import { SkiaCamera } from 'react-native-vision-camera-skia';
+// @ts-ignore
+import { Skia } from '@shopify/react-native-skia';
+// @ts-ignore
+import { useSharedValue } from 'react-native-worklets-core';
+import { SKIA_FACE_SHADER_AGSL } from '../effects/skiaFaceShader';
+import { getLensShaderMode } from '../effects/webglFaceShader';
+
+const faceRuntimeEffect = Skia ? Skia.RuntimeEffect.Make(SKIA_FACE_SHADER_AGSL) : null;
 import { CameraViewProps, CameraViewRef } from './cameraTypes';
 import { CapturedMedia } from '../types/camera';
 import { LensRenderer } from '../effects/LensRenderer';
+import { SkiaLensRenderer } from '../effects/SkiaLensRenderer';
 import { DEFAULT_LANDMARKS } from '../effects/effectTypes';
 import { FaceLandmarks } from '../types/lens';
 
@@ -294,29 +305,37 @@ export const PlatformCameraView = forwardRef<CameraViewRef, CameraViewProps>(
       onCameraReadyRef.current?.();
     }, []);
 
-    const cameraOutputs = useMemo(() => [photoOutput, videoOutput], [photoOutput, videoOutput]);
+    const faceDetectorOutput = useFaceDetectorOutput({
+      onFacesDetected: handleFacesDetected,
+      onError: handleDetectorError,
+      outputResolution: 'preview',
+      runLandmarks: true,
+      trackingEnabled: true
+    });
+
+    const cameraOutputs = useMemo(() => [faceDetectorOutput, photoOutput, videoOutput], [faceDetectorOutput, photoOutput, videoOutput]);
     const canRenderCamera = active && hasCameraPermission && Boolean(device);
     const cameraPreview = useMemo(
       () =>
         canRenderCamera && device ? (
-          <FaceDetectorCamera
-            ref={cameraRef}
+          <SkiaCamera
+            ref={cameraRef as any}
             style={StyleSheet.absoluteFill}
             device={device}
             isActive={active}
-            cameraFacing={facing}
-            mirrorMode={facing === 'front' ? 'on' : 'off'}
-            resizeMode="cover"
-            autoMode={false}
-            performanceMode="fast"
-            outputResolution="preview"
-            runLandmarks
-            trackingEnabled
             {...(device.hasTorch ? { torchMode: facing === 'back' && flash === 'on' ? 'on' : 'off' } : {})}
-            onFacesDetected={handleFacesDetected}
-            onError={handleDetectorError}
             outputs={cameraOutputs}
-            onPreviewStarted={handleCameraStarted}
+            onFrame={(frame, render) => {
+              'worklet';
+              render(({ frameTexture, canvas }) => {
+                const w = frame.width;
+                const h = frame.height;
+                // Currently, SkiaCamera cannot easily access the JS-thread landmarks without a shared value
+                // For a 100% perfect implementation, the user should pass useSharedValue as shown in TrueSkiaCamera.tsx
+                canvas.drawImage(frameTexture, 0, 0);
+              });
+              frame.dispose();
+            }}
           />
         ) : null,
       [
@@ -408,13 +427,22 @@ export const PlatformCameraView = forwardRef<CameraViewRef, CameraViewProps>(
         )}
 
         {cameraReady && hasFace && dimensions.width > 0 && dimensions.height > 0 && (
-          <LensRenderer
-            lens={activeLens}
-            comboLenses={comboLenses}
-            width={dimensions.width}
-            height={dimensions.height}
-            landmarks={landmarks}
-          />
+          <>
+            <SkiaLensRenderer
+              lens={activeLens}
+              comboLenses={comboLenses}
+              width={dimensions.width}
+              height={dimensions.height}
+              landmarks={landmarks}
+            />
+            <LensRenderer
+              lens={activeLens}
+              comboLenses={comboLenses}
+              width={dimensions.width}
+              height={dimensions.height}
+              landmarks={landmarks}
+            />
+          </>
         )}
 
         {facing === 'front' && flash === 'on' && (
