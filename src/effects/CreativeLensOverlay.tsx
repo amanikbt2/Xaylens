@@ -69,8 +69,6 @@ export const CreativeLensOverlay: React.FC<CreativeLensOverlayProps> = ({
     PALETTES[lens.id] ||
     (lens.category === 'style'
       ? { first: lens.accentColor, second: '#0f172a', glow: lens.accentColor, mode: 'aurora' as const }
-      : lens.category === 'funny'
-      ? { first: lens.accentColor, second: '#3b0764', glow: '#facc15', mode: 'thermal' as const }
       : lens.category === 'creature'
       ? { first: '#312e81', second: '#111827', glow: lens.accentColor, mode: 'stars' as const }
       : lens.category === 'animal'

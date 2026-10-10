@@ -10,6 +10,7 @@ import React, {
 import { ActivityIndicator, LayoutChangeEvent, StyleSheet, Text, View } from 'react-native';
 import {
   CameraRef,
+  Camera as VisionCamera,
   useCameraDevice,
   useCameraPermission,
   useMicrophonePermission,
@@ -20,20 +21,9 @@ import {
   useFaceDetectorOutput,
   Face as NativeFace,
 } from 'react-native-vision-camera-face-detector';
-// @ts-ignore
-import { SkiaCamera } from 'react-native-vision-camera-skia';
-// @ts-ignore
-import { Skia } from '@shopify/react-native-skia';
-// @ts-ignore
-import { useSharedValue } from 'react-native-worklets-core';
-import { SKIA_FACE_SHADER_AGSL } from '../effects/skiaFaceShader';
-import { getLensShaderMode } from '../effects/webglFaceShader';
-
-const faceRuntimeEffect = Skia ? Skia.RuntimeEffect.Make(SKIA_FACE_SHADER_AGSL) : null;
 import { CameraViewProps, CameraViewRef } from './cameraTypes';
 import { CapturedMedia } from '../types/camera';
 import { LensRenderer } from '../effects/LensRenderer';
-import { SkiaLensRenderer } from '../effects/SkiaLensRenderer';
 import { DEFAULT_LANDMARKS } from '../effects/effectTypes';
 import { FaceLandmarks } from '../types/lens';
 
@@ -318,24 +308,19 @@ export const PlatformCameraView = forwardRef<CameraViewRef, CameraViewProps>(
     const cameraPreview = useMemo(
       () =>
         canRenderCamera && device ? (
-          <SkiaCamera
+          <VisionCamera
             ref={cameraRef as any}
             style={StyleSheet.absoluteFill}
             device={device}
             isActive={active}
-            {...(device.hasTorch ? { torchMode: facing === 'back' && flash === 'on' ? 'on' : 'off' } : {})}
+            {...(device.hasTorch
+              ? { torchMode: facing === 'back' && flash === 'on' ? 'on' : 'off' }
+              : {})}
+            mirrorMode={facing === 'front' ? 'on' : 'off'}
+            resizeMode="cover"
             outputs={cameraOutputs}
-            onFrame={(frame, render) => {
-              'worklet';
-              render(({ frameTexture, canvas }) => {
-                const w = frame.width;
-                const h = frame.height;
-                // Currently, SkiaCamera cannot easily access the JS-thread landmarks without a shared value
-                // For a 100% perfect implementation, the user should pass useSharedValue as shown in TrueSkiaCamera.tsx
-                canvas.drawImage(frameTexture, 0, 0);
-              });
-              frame.dispose();
-            }}
+            onPreviewStarted={handleCameraStarted}
+            onError={handleDetectorError}
           />
         ) : null,
       [
@@ -427,22 +412,13 @@ export const PlatformCameraView = forwardRef<CameraViewRef, CameraViewProps>(
         )}
 
         {cameraReady && hasFace && dimensions.width > 0 && dimensions.height > 0 && (
-          <>
-            <SkiaLensRenderer
-              lens={activeLens}
-              comboLenses={comboLenses}
-              width={dimensions.width}
-              height={dimensions.height}
-              landmarks={landmarks}
-            />
-            <LensRenderer
-              lens={activeLens}
-              comboLenses={comboLenses}
-              width={dimensions.width}
-              height={dimensions.height}
-              landmarks={landmarks}
-            />
-          </>
+          <LensRenderer
+            lens={activeLens}
+            comboLenses={comboLenses}
+            width={dimensions.width}
+            height={dimensions.height}
+            landmarks={landmarks}
+          />
         )}
 
         {facing === 'front' && flash === 'on' && (
