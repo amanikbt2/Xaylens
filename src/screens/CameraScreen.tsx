@@ -97,6 +97,33 @@ export const CameraScreen: React.FC = () => {
     trackingState.faceWidth
   );
 
+  const {
+    isLoading,
+    hasCameraPermission,
+    hasAudioPermission,
+    canAskAgain,
+    requestAllPermissions,
+  } = usePermissions();
+  const permissionRequestStartedRef = useRef(false);
+
+  // Request both permissions before mounting the camera. The camera component
+  // cannot request them itself because this screen renders PermissionView until
+  // camera access has been granted.
+  useEffect(() => {
+    if (
+      isLoading ||
+      permissionRequestStartedRef.current ||
+      (hasCameraPermission && hasAudioPermission)
+    ) {
+      return;
+    }
+
+    permissionRequestStartedRef.current = true;
+    requestAllPermissions().catch(() => {
+      // PermissionView remains available for a manual retry.
+    });
+  }, [hasAudioPermission, hasCameraPermission, isLoading, requestAllPermissions]);
+
   const [previewMedia, setPreviewMedia] = useState<CapturedMedia | null>(null);
   const [isPreviewVisible, setIsPreviewVisible] = useState(false);
   const [isSettingsVisible, setIsSettingsVisible] = useState(false);
@@ -194,10 +221,6 @@ export const CameraScreen: React.FC = () => {
       }
     }
   }, [isRecording, isPaused, resumeRecording, pauseRecording]);
-
-  // Permissions Hook
-  const { isLoading, hasCameraPermission, canAskAgain, requestAllPermissions } =
-    usePermissions();
 
   // Start video recording
   const handleStartVideo = useCallback(async () => {
