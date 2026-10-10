@@ -78,7 +78,8 @@ export const usePermissions = (): PermissionsState => {
   const isLoading = !cameraPerm || !audioPerm;
   const hasCameraPermission = !!cameraPerm?.granted;
   const hasAudioPermission = !!audioPerm?.granted;
-  const canAskAgain = !!cameraPerm?.canAskAgain;
+  const canAskAgain =
+    !!cameraPerm?.canAskAgain && !!audioPerm?.canAskAgain;
 
   return {
     isLoading,

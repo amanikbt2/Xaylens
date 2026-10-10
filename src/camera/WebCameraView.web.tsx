@@ -690,7 +690,7 @@ export const PlatformCameraView = forwardRef<CameraViewRef, CameraViewProps>(
             <Text style={styles.errorTitle}>Web Camera Access Required</Text>
             <Text style={styles.errorText}>
               {errorMsg ||
-                'Please allow camera permission in your browser to test XayLens.'}
+                'Please allow camera permission in your browser to test Xaylens.'}
             </Text>
             <TouchableOpacity style={styles.retryBtn} onPress={initWebCamera}>
               <Text style={styles.retryBtnText}>Allow Camera</Text>

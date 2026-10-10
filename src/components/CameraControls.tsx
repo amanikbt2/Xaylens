@@ -34,7 +34,7 @@ export const CameraControls: React.FC<CameraControlsProps> = ({
 
   return (
     <View style={[styles.container, { pointerEvents: 'box-none' }]}>
-      {/* Top-Left: XayLens Title + Live Face Status Pill */}
+      {/* Top-Left: Xaylens Title + Live Face Status Pill */}
       <View style={styles.leftBrandWrapper}>
         <BrandBadge />
         {faceStatus && !isRecording && <FaceStatusBadge status={faceStatus} />}

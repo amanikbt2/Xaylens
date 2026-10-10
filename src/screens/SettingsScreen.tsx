@@ -54,7 +54,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
       const url = URL.createObjectURL(blob);
       const anchor = document.createElement('a');
       anchor.href = url;
-      anchor.download = `XayLens-favorites-${Date.now()}.txt`;
+      anchor.download = `Xaylens-favorites-${Date.now()}.txt`;
       document.body.appendChild(anchor);
       anchor.click();
       document.body.removeChild(anchor);
@@ -65,7 +65,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
 
     try {
       await Share.share({
-        title: 'XayLens favorite lenses',
+        title: 'Xaylens favorite lenses',
         message: content,
       });
     } catch {

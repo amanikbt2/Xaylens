@@ -300,7 +300,7 @@ export const CameraScreen: React.FC = () => {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={Colors.textPrimary} />
-        <Text style={styles.loadingText}>Initializing XayLens...</Text>
+        <Text style={styles.loadingText}>Initializing Xaylens...</Text>
       </View>
     );
   }

@@ -1,9 +1,9 @@
 export const APP_CONFIG = {
-  name: 'XayLens',
+  name: 'Xaylens',
   tagline: 'Create your reality.',
   version: '1.0.0',
   buildNumber: '1',
-  author: 'XayLens Labs',
+  author: 'Xaylens Labs',
   supportEmail: 'amanikbt1@gmail.com',
   privacyPolicyUrl: 'https://xaylens.app/privacy',
   maxVideoDurationSeconds: 60,

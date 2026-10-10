@@ -660,7 +660,7 @@ export const MediaPreviewModal: React.FC<MediaPreviewModalProps> = ({
       const res = await saveMediaToDevice(media);
       setIsExporting(false);
       if (res.success) {
-        setExportSuccess(res.message || 'Exported to XayLens folder!');
+        setExportSuccess(res.message || 'Exported to Xaylens folder!');
         setTimeout(() => setExportSuccess(null), 3500);
       } else {
         Alert.alert('Export Notice', res.message);
@@ -772,7 +772,7 @@ export const MediaPreviewModal: React.FC<MediaPreviewModalProps> = ({
                   />
                 </View>
                 <Text style={styles.nativePreviewTitle}>
-                  {media.lensName || 'XayLens'} Video Ready
+                  {media.lensName || 'Xaylens'} Video Ready
                 </Text>
                 <Text style={styles.nativePreviewSub}>
                   Speed: {playbackSpeed}x • Voice: {activeVoiceObj.label}

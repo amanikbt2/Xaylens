@@ -22,7 +22,7 @@ export const saveMediaToDevice = async (media: CapturedMedia): Promise<SaveMedia
     const a = document.createElement('a');
     a.href = media.uri;
     const ext = getFileExtension(media);
-    a.download = `XayLens_${Date.now()}.${ext}`;
+    a.download = `Xaylens_${Date.now()}.${ext}`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);

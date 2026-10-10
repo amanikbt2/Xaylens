@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Linking } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../constants/colors';
 import { createShadow } from '../utils/styles';
@@ -21,7 +21,7 @@ export const PermissionView: React.FC<PermissionViewProps> = ({
 
       <Text style={styles.title}>Camera Access Needed</Text>
       <Text style={styles.description}>
-        XayLens transforms your face with fun real-time lenses and effects. To get started,
+        Xaylens transforms your face with fun real-time lenses and effects. To get started,
         please grant camera and microphone access.
       </Text>
 
@@ -34,11 +34,20 @@ export const PermissionView: React.FC<PermissionViewProps> = ({
           <Text style={styles.buttonText}>Enable Camera</Text>
         </TouchableOpacity>
       ) : (
-        <View style={styles.settingsNotice}>
-          <Text style={styles.settingsText}>
-            Permissions were declined. Please enable Camera permissions in your device settings.
-          </Text>
-        </View>
+        <>
+          <View style={styles.settingsNotice}>
+            <Text style={styles.settingsText}>
+              Permissions were declined. Please enable Camera and Microphone access in your device settings.
+            </Text>
+          </View>
+          <TouchableOpacity
+            style={styles.settingsButton}
+            onPress={() => Linking.openSettings().catch(() => {})}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.buttonText}>Open Device Settings</Text>
+          </TouchableOpacity>
+        </>
       )}
     </View>
   );
@@ -95,11 +104,19 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     borderWidth: 1,
     borderColor: '#e4e4e7',
+    marginBottom: 14,
   },
   settingsText: {
     color: Colors.textSecondary,
     fontSize: 14,
     textAlign: 'center',
     lineHeight: 20,
+  },
+  settingsButton: {
+    backgroundColor: Colors.textPrimary,
+    paddingVertical: 14,
+    paddingHorizontal: 28,
+    borderRadius: 28,
+    ...createShadow('#000000', { width: 0, height: 2 }, 0.1, 6, 3),
   },
 });

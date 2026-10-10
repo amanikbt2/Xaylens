@@ -15,7 +15,7 @@ export const saveMediaToDevice = async (media: CapturedMedia): Promise<SaveMedia
       const a = document.createElement('a');
       a.href = media.uri;
       const ext = media.type === 'video' ? 'webm' : 'jpg';
-      a.download = `XayLens_${Date.now()}.${ext}`;
+      a.download = `Xaylens_${Date.now()}.${ext}`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -35,20 +35,17 @@ export const saveMediaToDevice = async (media: CapturedMedia): Promise<SaveMedia
 
     const asset = await MediaLibrary.createAssetAsync(media.uri);
 
-    // Look for existing album under XayLens, Xaylens, or Xaylence
-    let album = await MediaLibrary.getAlbumAsync('XayLens');
-    if (!album) {
-      album = await MediaLibrary.getAlbumAsync('Xaylens');
-    }
+    // Look for existing albums under the current and legacy Xaylens names
+    let album = await MediaLibrary.getAlbumAsync('Xaylens');
     if (!album) {
       album = await MediaLibrary.getAlbumAsync('Xaylence');
     }
 
     if (album == null) {
       try {
-        await MediaLibrary.createAlbumAsync('XayLens', asset, false);
+        await MediaLibrary.createAlbumAsync('Xaylens', asset, false);
       } catch {
-        await MediaLibrary.createAlbumAsync('XayLens', asset, true);
+        await MediaLibrary.createAlbumAsync('Xaylens', asset, true);
       }
     } else {
       try {
@@ -60,7 +57,7 @@ export const saveMediaToDevice = async (media: CapturedMedia): Promise<SaveMedia
 
     return {
       success: true,
-      message: 'Saved to XayLens folder in your gallery!',
+      message: 'Saved to Xaylens folder in your gallery!',
     };
   } catch (err: unknown) {
     const errorMsg = err instanceof Error ? err.message : 'Failed to save media.';
