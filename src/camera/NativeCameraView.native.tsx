@@ -312,7 +312,7 @@ export const PlatformCameraView = forwardRef<CameraViewRef, CameraViewProps>(
             outputResolution="preview"
             runLandmarks
             trackingEnabled
-            torchMode={facing === 'back' && flash === 'on' ? 'on' : 'off'}
+            {...(device.hasTorch ? { torchMode: facing === 'back' && flash === 'on' ? 'on' : 'off' } : {})}
             onFacesDetected={handleFacesDetected}
             onError={handleDetectorError}
             outputs={cameraOutputs}
@@ -336,7 +336,7 @@ export const PlatformCameraView = forwardRef<CameraViewRef, CameraViewProps>(
       takePictureAsync: async (): Promise<CapturedMedia | null> => {
         try {
           const photo = await photoOutput.capturePhotoToFile(
-            { flashMode: flash },
+            { ...(device?.hasFlash ? { flashMode: flash } : {}) },
             {}
           );
           return {
