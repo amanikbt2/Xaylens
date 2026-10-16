@@ -42,8 +42,8 @@ export const LensRenderer: React.FC<LensRendererProps> = React.memo(
     const animFrameRef = useRef<number | null>(null);
     const lastTimeRef = useRef<number>(Date.now());
     const hasFaceLens = Boolean(
-      (comboLenses && comboLenses.some((item) => item.category !== 'background' && item.id !== 'normal')) ||
-        (lens && lens.category !== 'background' && lens.id !== 'normal')
+      (comboLenses && comboLenses.some((item) => item.category !== 'background' && item.category !== 'ar' && item.id !== 'normal')) ||
+        (lens && lens.category !== 'background' && lens.category !== 'ar' && lens.id !== 'normal')
     );
 
     useEffect(() => {
@@ -88,7 +88,7 @@ export const LensRenderer: React.FC<LensRendererProps> = React.memo(
     const renderList = React.useMemo(
       () =>
         Platform.OS === 'web'
-          ? activeList.filter((item) => item.category !== 'background')
+          ? activeList.filter((item) => item.category !== 'background' && item.category !== 'ar')
           : activeList,
       [activeList]
     );

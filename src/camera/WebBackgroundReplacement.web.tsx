@@ -100,10 +100,143 @@ const drawVideoCover = (
   const iw = video.videoWidth || video.clientWidth;
   const ih = video.videoHeight || video.clientHeight;
   if (!iw || !ih) return;
-  const scale = Math.max(cw / iw, ch / ih);
-  const nw = iw * scale;
-  const nh = ih * scale;
-  ctx.drawImage(video, (cw - nw) / 2, (ch - nh) / 2, nw, nh);
+  drawSourceCover(ctx, video, iw, ih, cw, ch);
+};
+
+const drawSourceCover = (
+  ctx: CanvasRenderingContext2D,
+  source: CanvasImageSource,
+  sourceWidth: number,
+  sourceHeight: number,
+  targetWidth: number,
+  targetHeight: number
+) => {
+  if (!sourceWidth || !sourceHeight || !targetWidth || !targetHeight) return;
+
+  const sourceAspect = sourceWidth / sourceHeight;
+  const targetAspect = targetWidth / targetHeight;
+  let sx = 0;
+  let sy = 0;
+  let sw = sourceWidth;
+  let sh = sourceHeight;
+
+  if (sourceAspect > targetAspect) {
+    sw = sourceHeight * targetAspect;
+    sx = (sourceWidth - sw) / 2;
+  } else {
+    sh = sourceWidth / targetAspect;
+    sy = (sourceHeight - sh) / 2;
+  }
+
+  ctx.drawImage(
+    source,
+    sx,
+    sy,
+    sw,
+    sh,
+    0,
+    0,
+    targetWidth,
+    targetHeight
+  );
+};
+
+type ARSceneEffect = NonNullable<
+  NonNullable<Lens['config']['background']>['arEffect']
+>;
+
+const drawARSceneEffect = (
+  ctx: CanvasRenderingContext2D,
+  width: number,
+  height: number,
+  time: number,
+  effect: ARSceneEffect
+) => {
+  ctx.save();
+
+  if (effect === 'birds') {
+    const scale = Math.max(12, width * 0.026);
+    ctx.strokeStyle = 'rgba(24, 39, 34, 0.78)';
+    ctx.lineWidth = Math.max(1.5, scale * 0.13);
+    ctx.lineCap = 'round';
+    for (let index = 0; index < 5; index += 1) {
+      const progress = (time * 0.000025 + index * 0.23) % 1.2;
+      const x = (progress - 0.1) * width;
+      const y =
+        height * (0.13 + (index % 3) * 0.065) +
+        Math.sin(time * 0.0012 + index * 1.7) * height * 0.012;
+      const wingLift = Math.sin(time * 0.009 + index * 1.9) * scale * 0.42;
+      ctx.beginPath();
+      ctx.moveTo(x - scale, y - wingLift);
+      ctx.quadraticCurveTo(x - scale * 0.42, y + scale * 0.22, x, y);
+      ctx.quadraticCurveTo(x + scale * 0.42, y + scale * 0.22, x + scale, y - wingLift);
+      ctx.stroke();
+    }
+  } else if (effect === 'butterflies') {
+    const colors = ['#f472b6', '#a78bfa', '#fbbf24', '#67e8f9'];
+    for (let index = 0; index < 6; index += 1) {
+      const phase = time * 0.001 + index * 1.13;
+      const x = (((time * 0.000012 + index * 0.19) % 1.15) - 0.075) * width;
+      const y = height * (0.24 + (index % 4) * 0.15) + Math.sin(phase) * height * 0.035;
+      const size = Math.max(5, width * (0.009 + (index % 2) * 0.002));
+      const flap = 0.55 + Math.abs(Math.sin(time * 0.012 + index)) * 0.45;
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(Math.sin(phase * 0.6) * 0.35);
+      ctx.fillStyle = colors[index % colors.length];
+      ctx.globalAlpha = 0.78;
+      ctx.beginPath();
+      ctx.ellipse(-size * 0.48, 0, size * 0.48, size * flap, -0.35, 0, Math.PI * 2);
+      ctx.ellipse(size * 0.48, 0, size * 0.48, size * flap, 0.35, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 0.9;
+      ctx.strokeStyle = '#334155';
+      ctx.lineWidth = Math.max(1, size * 0.12);
+      ctx.beginPath();
+      ctx.moveTo(0, -size * 0.35);
+      ctx.lineTo(0, size * 0.42);
+      ctx.stroke();
+      ctx.restore();
+    }
+  } else if (effect === 'fireflies') {
+    for (let index = 0; index < 22; index += 1) {
+      const phase = time * (0.0005 + (index % 4) * 0.00012) + index * 2.1;
+      const x = ((index * 0.173 + Math.sin(phase) * 0.035 + 1) % 1) * width;
+      const y = ((index * 0.317 + Math.cos(phase * 0.8) * 0.045 + 1) % 1) * height;
+      const pulse = 0.35 + (Math.sin(phase * 2) + 1) * 0.3;
+      const radius = Math.max(1.5, width * 0.003);
+      ctx.globalAlpha = pulse;
+      ctx.fillStyle = '#fde68a';
+      ctx.beginPath();
+      ctx.arc(x, y, radius * 2.2, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = Math.min(1, pulse + 0.25);
+      ctx.fillStyle = '#fff7cc';
+      ctx.beginPath();
+      ctx.arc(x, y, radius * 0.7, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  } else {
+    const colors = ['rgba(251, 113, 133, 0.88)', 'rgba(244, 114, 182, 0.84)', 'rgba(255, 228, 230, 0.9)'];
+    for (let index = 0; index < 18; index += 1) {
+      const phase = time * 0.00022 + index * 0.31;
+      const progress = (time * (0.000035 + (index % 4) * 0.000008) + index * 0.137) % 1;
+      const x = ((index * 0.271 + Math.sin(phase) * 0.12 + 1) % 1) * width;
+      const y = progress * height - height * 0.08;
+      const size = Math.max(3, width * (0.004 + (index % 3) * 0.001));
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(phase + progress * 4);
+      ctx.fillStyle = colors[index % colors.length];
+      ctx.globalAlpha = 0.72;
+      ctx.beginPath();
+      ctx.ellipse(0, 0, size * 0.7, size * 1.35, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+  }
+
+  ctx.restore();
 };
 
 const drawScene = (
@@ -113,7 +246,8 @@ const drawScene = (
   scene: Scene,
   time: number,
   customVideo?: HTMLVideoElement,
-  customImageUri?: string
+  customImageUri?: string,
+  arEffect?: ARSceneEffect
 ) => {
   const drift = Math.sin(time * 0.00025) * width * 0.04;
   const imageUrl = customImageUri || SCENE_IMAGE_URLS[scene];
@@ -337,6 +471,10 @@ const drawScene = (
     }
     ctx.globalAlpha = 1;
   }
+
+  if (arEffect) {
+    drawARSceneEffect(ctx, width, height, time, arEffect);
+  }
 };
 
 let globalSegmenterPromise: Promise<any> | null = null;
@@ -507,26 +645,39 @@ export const WebBackgroundReplacement: React.FC<WebBackgroundReplacementProps> =
         backgroundVideoRef.current && backgroundVideoRef.current.readyState >= 2
           ? backgroundVideoRef.current
           : undefined,
-        lens.config.background?.imageUri
+        lens.config.background?.imageUri,
+        lens.config.background?.arEffect
       );
       personContext.clearRect(0, 0, personCanvas.width, personCanvas.height);
       personContext.globalCompositeOperation = 'source-over';
       const personSource = sourceCanvasRef?.current;
-      personContext.drawImage(
-        personSource || video,
-        0,
-        0,
-        personCanvas.width,
-        personCanvas.height
-      );
+      const mirrorPerson = mirrored && !personSource;
+      if (mirrorPerson) {
+        personContext.save();
+        personContext.translate(personCanvas.width, 0);
+        personContext.scale(-1, 1);
+      }
+      if (personSource) {
+        personContext.drawImage(personSource, 0, 0, personCanvas.width, personCanvas.height);
+      } else {
+        drawVideoCover(personContext, video, personCanvas.width, personCanvas.height);
+      }
+      if (mirrorPerson) personContext.restore();
       personContext.globalCompositeOperation = 'destination-in';
-      const mirrorMask = mirrored && Boolean(sourceCanvasRef?.current);
+      const mirrorMask = mirrored;
       if (mirrorMask) {
         personContext.save();
         personContext.translate(personCanvas.width, 0);
         personContext.scale(-1, 1);
       }
-      personContext.drawImage(maskCanvas, 0, 0, personCanvas.width, personCanvas.height);
+      drawSourceCover(
+        personContext,
+        maskCanvas,
+        maskWidth,
+        maskHeight,
+        personCanvas.width,
+        personCanvas.height
+      );
       if (mirrorMask) personContext.restore();
       personContext.globalCompositeOperation = 'source-over';
       outputContext.drawImage(personCanvas, 0, 0);

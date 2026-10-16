@@ -271,6 +271,7 @@ const makeLens = (category: LensCategory, [name, description]: LensSeed, index: 
     classic: ['film-outline', 'camera-outline', 'image-outline', 'contrast-outline'],
     style: ['color-palette-outline', 'flash-outline', 'star-outline', 'diamond-outline'],
     background: ['image-outline'],
+    ar: ['sparkles-outline'],
   };
 
   return {

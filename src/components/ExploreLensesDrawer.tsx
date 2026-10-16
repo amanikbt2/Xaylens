@@ -15,7 +15,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Lens, LensCategory } from '../types/lens';
 import { LensSquareCard } from './LensSquareCard';
 import { Colors } from '../constants/colors';
-import { customBackgroundLens } from '../lenses';
+import { AR_LENSES, customBackgroundLens } from '../lenses';
 
 interface ExploreLensesDrawerProps {
   visible: boolean;
@@ -27,7 +27,7 @@ interface ExploreLensesDrawerProps {
   onClose: () => void;
 }
 
-type FilterTab = 'all' | 'favorites' | LensCategory;
+type FilterTab = 'all' | 'favorites' | 'ar' | LensCategory;
 
 const CATEGORY_TABS: { id: FilterTab; label: string }[] = [
   { id: 'all', label: 'All Lenses' },
@@ -38,6 +38,7 @@ const CATEGORY_TABS: { id: FilterTab; label: string }[] = [
   { id: 'creature', label: 'Creatures' },
   { id: 'style', label: 'Styles' },
   { id: 'background', label: 'Backgrounds' },
+  { id: 'ar', label: '✨ AR' },
 ];
 
 export const ExploreLensesDrawer: React.FC<ExploreLensesDrawerProps> = ({
@@ -54,14 +55,19 @@ export const ExploreLensesDrawer: React.FC<ExploreLensesDrawerProps> = ({
   const [activeTab, setActiveTab] = useState<FilterTab>('all');
 
   const filteredLenses = useMemo(() => {
-    const availableLenses = activeTab === 'background'
-      ? [customBackgroundLens, ...lenses.filter((lens) => lens.id !== customBackgroundLens.id)]
-      : lenses;
+    const availableLenses =
+      activeTab === 'background'
+        ? [customBackgroundLens, ...lenses.filter((lens) => lens.id !== customBackgroundLens.id)]
+        : activeTab === 'ar'
+        ? AR_LENSES
+        : lenses;
 
     return availableLenses.filter((lens) => {
       // Tab filter
       if (activeTab === 'favorites') {
         if (!favoriteIds.includes(lens.id)) return false;
+      } else if (activeTab === 'ar') {
+        if (!AR_LENSES.some((arLens) => arLens.id === lens.id)) return false;
       } else if (activeTab !== 'all') {
         if (lens.category !== activeTab) return false;
       }

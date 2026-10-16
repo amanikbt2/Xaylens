@@ -12,15 +12,18 @@ import { puppyLens } from './definitions/puppy';
 import { bunnyLens } from './definitions/bunny';
 import { funnyGlassesLens } from './definitions/funnyGlasses';
 import { customBackgroundLens, createCustomBackgroundLens, CUSTOM_BACKGROUND_LENS_ID } from './customBackground';
+import { AR_LENSES } from './arLenses';
 
 export const INITIAL_LENSES: Lens[] = ALL_50_LENSES;
+export const ALL_LENSES: Lens[] = [...ALL_50_LENSES, ...AR_LENSES];
 
 export const getLensById = (id: string): Lens => {
-  return INITIAL_LENSES.find((l) => l.id === id) || ALL_50_LENSES[0];
+  return ALL_LENSES.find((lens) => lens.id === id) || ALL_LENSES[0];
 };
 
 export {
   ALL_50_LENSES,
+  AR_LENSES,
   normalLens,
   bigNoseLens,
   bigEyesLens,

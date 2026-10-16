@@ -2,7 +2,7 @@ import { CameraFacing } from './camera';
 
 export type LensEffectType = 'distortion' | 'overlay' | 'hybrid' | 'color_filter' | 'none';
 
-export type LensCategory = 'funny' | 'animal' | 'creature' | 'style' | 'beauty' | 'classic' | 'background';
+export type LensCategory = 'funny' | 'animal' | 'creature' | 'style' | 'beauty' | 'classic' | 'background' | 'ar';
 
 export interface FaceLandmarkPoint {
   x: number; // 0 to 1 normalized coordinate
@@ -102,6 +102,7 @@ export interface LensConfig {
     imageUri?: string;
     videoUri?: string;
     removeBackground?: boolean;
+    arEffect?: 'birds' | 'butterflies' | 'fireflies' | 'petals';
   };
 }
 

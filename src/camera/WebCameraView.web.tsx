@@ -85,11 +85,12 @@ export const PlatformCameraView = forwardRef<CameraViewRef, CameraViewProps>(
     activeLensIdRef.current = activeLens.id;
 
     const backgroundLens = [...(comboLenses || []), activeLens]
-      .filter((lens) => lens.category === 'background')
+      .filter((lens) => lens.config.background?.removeBackground)
       .slice(-1)[0] || null;
     const isBackgroundLens = Boolean(backgroundLens);
     const hasFaceLens = [...(comboLenses || []), activeLens].some(
-      (lens) => lens.id !== 'normal' && lens.category !== 'background'
+      (lens) =>
+        lens.id !== 'normal' && !lens.config.background?.removeBackground
     );
     const skipHiddenBackgroundWebGL = isBackgroundLens && !hasFaceLens;
     const isBackgroundLensRef = useRef(isBackgroundLens);

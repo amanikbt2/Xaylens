@@ -1,12 +1,12 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Lens, LensCategory } from '../types/lens';
-import { ALL_50_LENSES, customBackgroundLens, normalLens } from '../lenses';
+import { ALL_50_LENSES, ALL_LENSES, AR_LENSES, customBackgroundLens, normalLens } from '../lenses';
 import { triggerLensSelectHaptic } from '../utils/haptics';
 
 const FAVORITES_STORAGE_KEY = '@xaylens_favorite_lenses';
 
-export type CategoryFilter = 'all' | 'favorites' | LensCategory;
+export type CategoryFilter = 'all' | 'favorites' | 'ar' | LensCategory;
 
 export const useLens = (initialLensId: string = 'normal') => {
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>('all');
@@ -125,6 +125,10 @@ export const useLens = (initialLensId: string = 'normal') => {
       return favs;
     }
 
+    if (categoryFilter === 'ar') {
+      return [normalItem, ...AR_LENSES];
+    }
+
     // Filter strictly to the chosen category
     const catLenses = ALL_50_LENSES.filter((l) => l.category === categoryFilter);
     if (categoryFilter === 'background') {
@@ -192,7 +196,7 @@ export const useLens = (initialLensId: string = 'normal') => {
 
   return {
     lenses: carouselLenses,
-    allLenses: ALL_50_LENSES,
+    allLenses: ALL_LENSES,
     activeLens,
     comboLenses: comboLenses.filter((l) => l.id !== 'normal'),
     isComboActive,
