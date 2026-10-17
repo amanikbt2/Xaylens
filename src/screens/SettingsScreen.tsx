@@ -225,6 +225,25 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
             </View>
           </View>
 
+          {/* LENS ENGINE */}
+          <Text style={styles.sectionHeader}>LENS ENGINE</Text>
+          <View style={styles.card}>
+            <View style={styles.row}>
+              <View style={{ flex: 1, paddingRight: 16 }}>
+                <Text style={styles.rowTitle}>Use Online Lenses</Text>
+                <Text style={styles.rowSubtitle}>
+                  Load real WebGL GPU shaders from xaylens.onrender.com (turn off for offline native lenses)
+                </Text>
+              </View>
+              <Switch
+                value={preferences.useOnlineLenses}
+                onValueChange={(val) => updatePreference('useOnlineLenses', val)}
+                trackColor={{ false: '#e4e4e7', true: Colors.accentYellow }}
+                thumbColor={Colors.white}
+              />
+            </View>
+          </View>
+
           {/* FAVORITES */}
           <Text style={styles.sectionHeader}>MY LENSES</Text>
           <View style={styles.card}>

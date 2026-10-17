@@ -20,6 +20,8 @@ import { PermissionView } from '../components/PermissionView';
 import { CameraErrorView } from '../components/CameraErrorView';
 import { MediaPreviewModal } from '../components/MediaPreviewModal';
 import { SettingsScreen } from './SettingsScreen';
+import { useSettings } from '../hooks/useSettings';
+import { OnlineLensContainer } from '../components/OnlineLensContainer';
 import { useCamera } from '../hooks/useCamera';
 import { CategoryFilter, useLens } from '../hooks/useLens';
 import { useRecording } from '../hooks/useRecording';
@@ -34,6 +36,8 @@ import { Lens } from '../types/lens';
 export const CameraScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
   const cameraRef = useRef<CameraViewRef>(null);
+  const { preferences, updatePreference } = useSettings();
+  const isOnlineLensesActive = Platform.OS !== 'web' && preferences.useOnlineLenses;
 
   // Camera state (always video mode like Snapchat)
   const {
@@ -329,6 +333,13 @@ export const CameraScreen: React.FC = () => {
 
   return (
     <View style={styles.root}>
+      {isOnlineLensesActive && (
+        <OnlineLensContainer
+          onSwitchToNative={() => updatePreference('useOnlineLenses', false)}
+          onOpenSettings={() => setIsSettingsVisible(true)}
+        />
+      )}
+
       {/* Centered container for desktop web responsiveness */}
       <View style={styles.desktopWrapper}>
         <View style={styles.cameraContainer}>

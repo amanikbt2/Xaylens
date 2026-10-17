@@ -9,6 +9,7 @@ export interface AppPreferences {
   highQualityVideo: boolean;
   mirrorFrontCamera: boolean;
   gridEnabled: boolean;
+  useOnlineLenses: boolean;
 }
 
 export const DEFAULT_PREFERENCES: AppPreferences = {
@@ -20,4 +21,5 @@ export const DEFAULT_PREFERENCES: AppPreferences = {
   highQualityVideo: true,
   mirrorFrontCamera: true,
   gridEnabled: false,
+  useOnlineLenses: true,
 };
