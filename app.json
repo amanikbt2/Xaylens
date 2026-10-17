@@ -6,6 +6,7 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
+    "newArchEnabled": true,
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.amanikbt1.xaylens",
@@ -76,11 +77,11 @@
       "./plugins/withPlayStoreDeobfuscation",
       "./plugins/withMlKitFaceModel"
     ],
+    "owner": "sliver1",
     "extra": {
       "eas": {
-        "projectId": "ef6acdbe-a278-4d63-a829-1ddcde1dfb78"
+        "projectId": "cdc8895c-824d-40f9-8831-4c951bebf8e8"
       }
-    },
-    "owner": "amanikbt2"
+    }
   }
 }
