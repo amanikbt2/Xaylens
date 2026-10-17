@@ -393,7 +393,7 @@ export const AlienOverlay: React.FC<OverlayProps> = ({
         </G>
 
         {/* Large Extraterrestrial Almond Eyes */}
-        <G transform={`translate(${eyeLeftX}, ${eyeLeftY}) rotate(-18) scale(${faceScale * 0.9})`}>
+        <G transform={`translate(${eyeLeftX}, ${eyeLeftY}) rotate(${-18 + (landmarks.roll || 0)}) scale(${faceScale * 0.9})`}>
           <Path
             d="M -32 0 C -20 -28, 20 -28, 32 0 C 20 28, -20 28, -32 0 Z"
             fill="url(#alienEyeGrad)"
@@ -404,7 +404,7 @@ export const AlienOverlay: React.FC<OverlayProps> = ({
           <Ellipse cx="10" cy="6" rx="4" ry="2" fill="#4ade80" opacity="0.6" />
         </G>
 
-        <G transform={`translate(${eyeRightX}, ${eyeRightY}) rotate(18) scale(${faceScale * 0.9})`}>
+        <G transform={`translate(${eyeRightX}, ${eyeRightY}) rotate(${18 + (landmarks.roll || 0)}) scale(${faceScale * 0.9})`}>
           <Path
             d="M -32 0 C -20 -28, 20 -28, 32 0 C 20 28, -20 28, -32 0 Z"
             fill="url(#alienEyeGrad)"
@@ -418,3 +418,316 @@ export const AlienOverlay: React.FC<OverlayProps> = ({
     </View>
   );
 };
+
+/**
+ * Big Anime / Cartoon Sparkling Eyes Overlay (Face28 Signature)
+ */
+export const BigEyesOverlay: React.FC<OverlayProps> = ({
+  landmarks,
+  canvasWidth,
+  canvasHeight,
+  animationTick = 0,
+}) => {
+  const eyeLeftX = landmarks.leftEye.x * canvasWidth;
+  const eyeLeftY = landmarks.leftEye.y * canvasHeight;
+  const eyeRightX = landmarks.rightEye.x * canvasWidth;
+  const eyeRightY = landmarks.rightEye.y * canvasHeight;
+  const noseX = landmarks.nose.x * canvasWidth;
+  const noseY = landmarks.nose.y * canvasHeight;
+  const faceScale = (landmarks.faceWidth * canvasWidth) / 200;
+  const roll = landmarks.roll || 0;
+  const eyeR = faceScale * 42;
+  const sparklePhase = Math.sin(animationTick * 0.12) * 2;
+
+  return (
+    <View style={[StyleSheet.absoluteFill, { pointerEvents: 'none' }]}>
+      <Svg width={canvasWidth} height={canvasHeight} style={StyleSheet.absoluteFill}>
+        <Defs>
+          <RadialGradient id="bigEyeIris" cx="45%" cy="40%" r="55%">
+            <Stop offset="0%" stopColor="#38bdf8" />
+            <Stop offset="45%" stopColor="#0284c7" />
+            <Stop offset="80%" stopColor="#0369a1" />
+            <Stop offset="100%" stopColor="#082f49" />
+          </RadialGradient>
+          <RadialGradient id="animeBlush" cx="50%" cy="50%" r="50%">
+            <Stop offset="0%" stopColor="#fb7185" stopOpacity="0.7" />
+            <Stop offset="100%" stopColor="#fb7185" stopOpacity="0" />
+          </RadialGradient>
+        </Defs>
+
+        {/* Cute Anime Cheeks */}
+        <Circle cx={noseX - 58 * faceScale} cy={noseY + 12 * faceScale} r={22 * faceScale} fill="url(#animeBlush)" />
+        <Circle cx={noseX + 58 * faceScale} cy={noseY + 12 * faceScale} r={22 * faceScale} fill="url(#animeBlush)" />
+
+        {/* Left Anime Eye */}
+        <G transform={`translate(${eyeLeftX}, ${eyeLeftY}) rotate(${roll})`}>
+          {/* Sclera & Iris */}
+          <Circle cx="0" cy="0" r={eyeR} fill="#ffffff" stroke="#0f172a" strokeWidth={3 * faceScale} />
+          <Circle cx="0" cy="0" r={eyeR * 0.88} fill="url(#bigEyeIris)" />
+          {/* Pupil */}
+          <Circle cx="0" cy="0" r={eyeR * 0.44} fill="#09090b" />
+          {/* Main Glistening Reflection */}
+          <Ellipse cx={-eyeR * 0.28} cy={-eyeR * 0.28} rx={eyeR * 0.32} ry={eyeR * 0.22} fill="#ffffff" opacity="0.95" />
+          {/* Secondary Star Reflection */}
+          <Circle cx={eyeR * 0.24} cy={eyeR * 0.24 + sparklePhase} r={eyeR * 0.16} fill="#ffffff" opacity="0.88" />
+          {/* Eyelash / Outline arc */}
+          <Path
+            d={`M ${-eyeR * 1.08} ${-eyeR * 0.1} Q 0 ${-eyeR * 1.25} ${eyeR * 1.08} ${-eyeR * 0.1}`}
+            stroke="#09090b"
+            strokeWidth={4.5 * faceScale}
+            fill="none"
+            strokeLinecap="round"
+          />
+        </G>
+
+        {/* Right Anime Eye */}
+        <G transform={`translate(${eyeRightX}, ${eyeRightY}) rotate(${roll})`}>
+          <Circle cx="0" cy="0" r={eyeR} fill="#ffffff" stroke="#0f172a" strokeWidth={3 * faceScale} />
+          <Circle cx="0" cy="0" r={eyeR * 0.88} fill="url(#bigEyeIris)" />
+          <Circle cx="0" cy="0" r={eyeR * 0.44} fill="#09090b" />
+          <Ellipse cx={-eyeR * 0.28} cy={-eyeR * 0.28} rx={eyeR * 0.32} ry={eyeR * 0.22} fill="#ffffff" opacity="0.95" />
+          <Circle cx={eyeR * 0.24} cy={eyeR * 0.24 + sparklePhase} r={eyeR * 0.16} fill="#ffffff" opacity="0.88" />
+          <Path
+            d={`M ${-eyeR * 1.08} ${-eyeR * 0.1} Q 0 ${-eyeR * 1.25} ${eyeR * 1.08} ${-eyeR * 0.1}`}
+            stroke="#09090b"
+            strokeWidth={4.5 * faceScale}
+            fill="none"
+            strokeLinecap="round"
+          />
+        </G>
+      </Svg>
+    </View>
+  );
+};
+
+/**
+ * Big Comical Bulbous 3D Clown Nose Overlay (Face28 Signature)
+ */
+export const BigNoseOverlay: React.FC<OverlayProps> = ({
+  landmarks,
+  canvasWidth,
+  canvasHeight,
+  animationTick = 0,
+}) => {
+  const noseX = landmarks.nose.x * canvasWidth;
+  const noseY = landmarks.nose.y * canvasHeight;
+  const faceScale = (landmarks.faceWidth * canvasWidth) / 200;
+  const roll = landmarks.roll || 0;
+  const noseR = faceScale * 44;
+  const jiggle = Math.sin(animationTick * 0.18) * 2;
+
+  return (
+    <View style={[StyleSheet.absoluteFill, { pointerEvents: 'none' }]}>
+      <Svg width={canvasWidth} height={canvasHeight} style={StyleSheet.absoluteFill}>
+        <Defs>
+          <RadialGradient id="bigNoseGrad" cx="35%" cy="30%" r="65%">
+            <Stop offset="0%" stopColor="#f87171" />
+            <Stop offset="30%" stopColor="#ef4444" />
+            <Stop offset="75%" stopColor="#dc2626" />
+            <Stop offset="100%" stopColor="#991b1b" />
+          </RadialGradient>
+          <RadialGradient id="noseShadow" cx="50%" cy="50%" r="50%">
+            <Stop offset="0%" stopColor="#000000" stopOpacity="0.45" />
+            <Stop offset="100%" stopColor="#000000" stopOpacity="0" />
+          </RadialGradient>
+        </Defs>
+
+        <G transform={`translate(${noseX}, ${noseY + jiggle}) rotate(${roll})`}>
+          {/* Drop shadow */}
+          <Ellipse cx="0" cy={noseR * 0.65} rx={noseR * 0.9} ry={noseR * 0.35} fill="url(#noseShadow)" />
+          {/* 3D Ball */}
+          <Circle cx="0" cy="0" r={noseR} fill="url(#bigNoseGrad)" />
+          {/* Nostril Curves */}
+          <Path
+            d={`M ${-noseR * 0.55} ${noseR * 0.4} Q ${-noseR * 0.3} ${noseR * 0.7} ${-noseR * 0.1} ${noseR * 0.5}`}
+            stroke="#7f1d1d"
+            strokeWidth={3 * faceScale}
+            fill="none"
+            strokeLinecap="round"
+          />
+          <Path
+            d={`M ${noseR * 0.55} ${noseR * 0.4} Q ${noseR * 0.3} ${noseR * 0.7} ${noseR * 0.1} ${noseR * 0.5}`}
+            stroke="#7f1d1d"
+            strokeWidth={3 * faceScale}
+            fill="none"
+            strokeLinecap="round"
+          />
+          {/* Glossy Curved Highlight */}
+          <Ellipse cx={-noseR * 0.32} cy={-noseR * 0.32} rx={noseR * 0.35} ry={noseR * 0.22} fill="#ffffff" opacity="0.8" transform={`rotate(-22 ${-noseR * 0.32} ${-noseR * 0.32})`} />
+        </G>
+      </Svg>
+    </View>
+  );
+};
+
+/**
+ * Big Comical Mouth / Plump Lips Overlay (Face28 Signature)
+ */
+export const BigMouthOverlay: React.FC<OverlayProps> = ({
+  landmarks,
+  canvasWidth,
+  canvasHeight,
+  animationTick = 0,
+}) => {
+  const mouthX = landmarks.mouth.x * canvasWidth;
+  const mouthY = landmarks.mouth.y * canvasHeight;
+  const faceScale = (landmarks.faceWidth * canvasWidth) / 200;
+  const roll = landmarks.roll || 0;
+  const wobble = Math.sin(animationTick * 0.1) * 3;
+
+  return (
+    <View style={[StyleSheet.absoluteFill, { pointerEvents: 'none' }]}>
+      <Svg width={canvasWidth} height={canvasHeight} style={StyleSheet.absoluteFill}>
+        <Defs>
+          <LinearGradient id="bigLipsGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+            <Stop offset="0%" stopColor="#fb7185" />
+            <Stop offset="40%" stopColor="#e11d48" />
+            <Stop offset="100%" stopColor="#9f1239" />
+          </LinearGradient>
+        </Defs>
+
+        <G transform={`translate(${mouthX}, ${mouthY}) rotate(${roll}) scale(${faceScale * 1.85})`}>
+          {/* Dark oral cavity */}
+          <Path d="M -50 0 C -35 38, 35 38, 50 0 Z" fill="#4c0519" />
+          {/* Pearly White Teeth */}
+          <Path d="M -40 2 C -20 18, 20 18, 40 2 Z" fill="#ffffff" opacity="0.96" />
+          <Path d="M -20 4 L -20 14 M 0 5 L 0 16 M 20 4 L 20 14" stroke="#e2e8f0" strokeWidth="1.5" />
+          {/* Animated Wiggling Tongue */}
+          <Path
+            d={`M -20 15 C ${-22 + wobble} 42, ${22 + wobble} 42, 20 15 Z`}
+            fill="#f43f5e"
+          />
+          <Path d={`M ${wobble * 0.5} 18 L ${wobble * 0.5} 34`} stroke="#be123c" strokeWidth="1.5" />
+          {/* Giant Plump Lips Outline */}
+          <Path
+            d="M -56 0 C -38 -32, -12 -28, 0 -14 C 12 -28, 38 -32, 56 0 C 38 42, -38 42, -56 0 Z"
+            fill="url(#bigLipsGrad)"
+            opacity="0.94"
+          />
+          {/* Lip Glaze Shine */}
+          <Ellipse cx="-18" cy="14" rx="14" ry="4" fill="#ffffff" opacity="0.65" />
+          <Ellipse cx="18" cy="14" rx="10" ry="3" fill="#ffffff" opacity="0.5" />
+        </G>
+      </Svg>
+    </View>
+  );
+};
+
+/**
+ * Tiny Face / Button Face Overlay (Face28 Signature)
+ */
+export const TinyFaceOverlay: React.FC<OverlayProps> = ({
+  landmarks,
+  canvasWidth,
+  canvasHeight,
+}) => {
+  const noseX = landmarks.nose.x * canvasWidth;
+  const noseY = landmarks.nose.y * canvasHeight;
+  const faceScale = (landmarks.faceWidth * canvasWidth) / 200;
+  const roll = landmarks.roll || 0;
+
+  return (
+    <View style={[StyleSheet.absoluteFill, { pointerEvents: 'none' }]}>
+      <Svg width={canvasWidth} height={canvasHeight} style={StyleSheet.absoluteFill}>
+        {/* Adorable Rosy Button Face Centerpiece */}
+        <G transform={`translate(${noseX}, ${noseY}) rotate(${roll}) scale(${faceScale * 0.75})`}>
+          {/* Huge Pink Cheek Circles */}
+          <Circle cx="-52" cy="0" r="28" fill="#fda4af" opacity="0.65" />
+          <Circle cx="52" cy="0" r="28" fill="#fda4af" opacity="0.65" />
+          {/* Miniature cute eyes */}
+          <Circle cx="-22" cy="-22" r="9" fill="#09090b" />
+          <Circle cx="-24" cy="-24" r="3.5" fill="#ffffff" />
+          <Circle cx="22" cy="-22" r="9" fill="#09090b" />
+          <Circle cx="20" cy="-24" r="3.5" fill="#ffffff" />
+          {/* Tiny button nose */}
+          <Ellipse cx="0" cy="-4" rx="6" ry="4.5" fill="#f43f5e" />
+          <Ellipse cx="-2" cy="-5" rx="2" ry="1.5" fill="#ffffff" opacity="0.7" />
+          {/* Tiny cute smile */}
+          <Path d="M -12 10 Q 0 20 12 10" stroke="#9f1239" strokeWidth="3" fill="none" strokeLinecap="round" />
+        </G>
+      </Svg>
+    </View>
+  );
+};
+
+/**
+ * Wide Face / Chubby Cheeks Overlay (Face28 Signature)
+ */
+export const WideFaceOverlay: React.FC<OverlayProps> = ({
+  landmarks,
+  canvasWidth,
+  canvasHeight,
+}) => {
+  const noseX = landmarks.nose.x * canvasWidth;
+  const noseY = landmarks.nose.y * canvasHeight;
+  const mouthY = landmarks.mouth.y * canvasHeight;
+  const faceScale = (landmarks.faceWidth * canvasWidth) / 200;
+  const roll = landmarks.roll || 0;
+
+  return (
+    <View style={[StyleSheet.absoluteFill, { pointerEvents: 'none' }]}>
+      <Svg width={canvasWidth} height={canvasHeight} style={StyleSheet.absoluteFill}>
+        <G transform={`translate(${noseX}, ${(noseY + mouthY) / 2}) rotate(${roll}) scale(${faceScale})`}>
+          {/* Left Puffy Cheek Bulge */}
+          <Ellipse cx="-95" cy="0" rx="48" ry="36" fill="#fecdd3" opacity="0.75" />
+          <Circle cx="-95" cy="0" r="22" fill="#f43f5e" opacity="0.4" />
+          {/* Right Puffy Cheek Bulge */}
+          <Ellipse cx="95" cy="0" rx="48" ry="36" fill="#fecdd3" opacity="0.75" />
+          <Circle cx="95" cy="0" r="22" fill="#f43f5e" opacity="0.4" />
+          {/* Wide Elastic Comedy Grin */}
+          <Path
+            d="M -75 10 Q 0 48 75 10"
+            stroke="#be123c"
+            strokeWidth="5"
+            fill="none"
+            strokeLinecap="round"
+          />
+          <Path d="M -78 2 L -70 18" stroke="#be123c" strokeWidth="4" strokeLinecap="round" />
+          <Path d="M 78 2 L 70 18" stroke="#be123c" strokeWidth="4" strokeLinecap="round" />
+        </G>
+      </Svg>
+    </View>
+  );
+};
+
+/**
+ * Hypnotic Swirl Face Vortex Overlay (Face28 Signature)
+ */
+export const SwirlFaceOverlay: React.FC<OverlayProps> = ({
+  landmarks,
+  canvasWidth,
+  canvasHeight,
+  animationTick = 0,
+}) => {
+  const noseX = landmarks.nose.x * canvasWidth;
+  const noseY = landmarks.nose.y * canvasHeight;
+  const faceScale = (landmarks.faceWidth * canvasWidth) / 200;
+  const angle = (animationTick * 4) % 360;
+
+  return (
+    <View style={[StyleSheet.absoluteFill, { pointerEvents: 'none' }]}>
+      <Svg width={canvasWidth} height={canvasHeight} style={StyleSheet.absoluteFill}>
+        <G transform={`translate(${noseX}, ${noseY}) rotate(${angle}) scale(${faceScale})`}>
+          {Array.from({ length: 8 }, (_, i) => {
+            const rot = i * 45;
+            const colors = ['#f43f5e', '#a855f7', '#3b82f6', '#10b981', '#f59e0b', '#ec4899', '#06b6d4', '#8b5cf6'];
+            return (
+              <G key={`swirl-${i}`} transform={`rotate(${rot})`}>
+                <Path
+                  d="M 0 0 C 35 15, 65 55, 95 30 C 120 10, 140 70, 160 110"
+                  stroke={colors[i]}
+                  strokeWidth="8"
+                  fill="none"
+                  strokeLinecap="round"
+                  opacity="0.75"
+                />
+              </G>
+            );
+          })}
+          <Circle cx="0" cy="0" r="16" fill="#ffffff" />
+        </G>
+      </Svg>
+    </View>
+  );
+};
+

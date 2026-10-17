@@ -1,15 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { View, StyleSheet, Dimensions, Platform } from 'react-native';
-import Svg, {
-  Defs,
-  RadialGradient,
-  LinearGradient,
-  Stop,
-  Circle,
-  Ellipse,
-  G,
-  Path,
-} from 'react-native-svg';
 import { Lens, FaceLandmarks } from '../types/lens';
 import { FaceTracker } from './faceTracker';
 import { FaceTrackingState, DEFAULT_TRACKING_STATE } from './effectTypes';
@@ -18,6 +8,12 @@ import {
   BunnyOverlay,
   FunnyGlassesOverlay,
   AlienOverlay,
+  BigEyesOverlay,
+  BigNoseOverlay,
+  BigMouthOverlay,
+  TinyFaceOverlay,
+  WideFaceOverlay,
+  SwirlFaceOverlay,
 } from './overlays';
 import { CreativeLensOverlay } from './CreativeLensOverlay';
 
@@ -99,18 +95,6 @@ export const LensRenderer: React.FC<LensRendererProps> = React.memo(
 
     const rawLandmarks = externalLandmarks || trackingState.landmarks;
     const landmarks = getWarpedLandmarks(rawLandmarks, renderList);
-    const noseX = landmarks.nose.x * width;
-    const noseY = landmarks.nose.y * height;
-    const eyeLX = landmarks.leftEye.x * width;
-    const eyeLY = landmarks.leftEye.y * height;
-    const eyeRX = landmarks.rightEye.x * width;
-    const eyeRY = landmarks.rightEye.y * height;
-    const mouthX = landmarks.mouth.x * width;
-    const mouthY = landmarks.mouth.y * height;
-    const faceScale = (landmarks.faceWidth * width) / 200;
-    const isWeb = Platform.OS === 'web';
-
-    const hasLens = (id: string) => renderList.some((l) => l.id === id);
 
     return (
       <View
@@ -131,44 +115,67 @@ export const LensRenderer: React.FC<LensRendererProps> = React.memo(
 
 
 
-        {/* NATIVE 3D GIANT MOUTH / LIPS */}
-        {!isWeb && hasLens('big-mouth') && (
-          <Svg width={width} height={height} style={StyleSheet.absoluteFill}>
-            <Defs>
-              <LinearGradient id="plumpLips" x1="0%" y1="0%" x2="0%" y2="100%">
-                <Stop offset="0%" stopColor="#fb7185" />
-                <Stop offset="50%" stopColor="#e11d48" />
-                <Stop offset="100%" stopColor="#9f1239" />
-              </LinearGradient>
-            </Defs>
-            <G
-              transform={`translate(${mouthX}, ${mouthY}) scale(${
-                faceScale * 1.55
-              })`}
-            >
-              <Path
-                d="M -52 0 C -34 -28, -10 -24, 0 -12 C 10 -24, 34 -28, 52 0 C 34 32, -34 32, -52 0 Z"
-                fill="url(#plumpLips)"
-              />
-              <Path
-                d="M -38 -2 C -20 14, 20 14, 38 -2 C 22 4, -22 4, -38 -2 Z"
-                fill="#ffffff"
-                opacity="0.92"
-              />
-              <Ellipse
-                cx="-16"
-                cy="11"
-                rx="12"
-                ry="3.5"
-                fill="#ffffff"
-                opacity="0.55"
-              />
-            </G>
-          </Svg>
+        {/* FACE28 SIGNATURE LENSES */}
+        {/* BIG EYES (Sparkling Anime / Giant Comic Eyes) */}
+        {renderList.some((l) => ['big-eyes', 'surprised-eyes', 'wide-eyes', 'deer-eyes', 'star-eyes'].includes(l.id)) && (
+          <BigEyesOverlay
+            landmarks={landmarks}
+            canvasWidth={width}
+            canvasHeight={height}
+            animationTick={tick}
+          />
         )}
 
-        {/* ALIEN HYBRID LENS */}
-        {hasLens('alien') && (
+        {/* BIG NOSE (Clown / Bulbous Comical 3D Nose) */}
+        {renderList.some((l) => ['big-nose', 'wobble-nose'].includes(l.id)) && (
+          <BigNoseOverlay
+            landmarks={landmarks}
+            canvasWidth={width}
+            canvasHeight={height}
+            animationTick={tick}
+          />
+        )}
+
+        {/* BIG MOUTH (Plump 3D Giant Lips & Teeth & Animated Tongue) */}
+        {renderList.some((l) => ['big-mouth', 'wide-smile', 'fish-lips', 'robot-smile'].includes(l.id)) && (
+          <BigMouthOverlay
+            landmarks={landmarks}
+            canvasWidth={width}
+            canvasHeight={height}
+            animationTick={tick}
+          />
+        )}
+
+        {/* TINY FACE / BUTTON FACE */}
+        {renderList.some((l) => ['tiny-face', 'button-face', 'squeaky-face', 'tiny-mouth'].includes(l.id)) && (
+          <TinyFaceOverlay
+            landmarks={landmarks}
+            canvasWidth={width}
+            canvasHeight={height}
+          />
+        )}
+
+        {/* WIDE FACE / CHUBBY CHEEKS */}
+        {renderList.some((l) => ['wide-face', 'chipmunk-cheeks', 'clown-cheeks', 'pancake-face', 'marshmallow-head'].includes(l.id)) && (
+          <WideFaceOverlay
+            landmarks={landmarks}
+            canvasWidth={width}
+            canvasHeight={height}
+          />
+        )}
+
+        {/* SWIRL FACE / HYPNOTIC VORTEX */}
+        {renderList.some((l) => ['swirl-face', 'dizzy-swirl'].includes(l.id)) && (
+          <SwirlFaceOverlay
+            landmarks={landmarks}
+            canvasWidth={width}
+            canvasHeight={height}
+            animationTick={tick}
+          />
+        )}
+
+        {/* ALIEN MARTIAN LENS */}
+        {renderList.some((l) => ['alien', 'alien-smile'].includes(l.id)) && (
           <AlienOverlay
             landmarks={landmarks}
             canvasWidth={width}
@@ -178,7 +185,7 @@ export const LensRenderer: React.FC<LensRendererProps> = React.memo(
         )}
 
         {/* PUPPY OVERLAY LENS */}
-        {hasLens('puppy') && (
+        {renderList.some((l) => ['puppy', 'puppy-love'].includes(l.id)) && (
           <PuppyOverlay
             landmarks={landmarks}
             canvasWidth={width}
@@ -188,7 +195,7 @@ export const LensRenderer: React.FC<LensRendererProps> = React.memo(
         )}
 
         {/* BUNNY OVERLAY LENS */}
-        {hasLens('bunny') && (
+        {renderList.some((l) => ['bunny', 'bunny-hop'].includes(l.id)) && (
           <BunnyOverlay
             landmarks={landmarks}
             canvasWidth={width}
@@ -198,7 +205,7 @@ export const LensRenderer: React.FC<LensRendererProps> = React.memo(
         )}
 
         {/* FUNNY GLASSES OVERLAY LENS */}
-        {hasLens('funny-glasses') && (
+        {renderList.some((l) => ['funny-glasses', 'goofy-glasses'].includes(l.id)) && (
           <FunnyGlassesOverlay
             landmarks={landmarks}
             canvasWidth={width}

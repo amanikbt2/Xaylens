@@ -97,11 +97,22 @@ export const PlatformCameraView = forwardRef<CameraViewRef, CameraViewProps>(
     const device = useCameraDevice(facing === 'front' ? 'front' : 'back');
     const cameraPermission = useCameraPermission();
     const microphonePermission = useMicrophonePermission();
-    const photoOutput = usePhotoOutput({ qualityPrioritization: 'speed' });
-    const videoOutput = useVideoOutput({
-      enableAudio: true,
-      targetResolution: { width: 1280, height: 720 },
-    });
+
+    // Memoized output configurations ensure VisionCamera outputs are strictly stable
+    // and never trigger hardware Camera2 capture session tear-down and rebuilds (2s freeze pulse).
+    const photoOutputConfig = useMemo(() => ({ qualityPrioritization: 'speed' as const }), []);
+    const photoOutput = usePhotoOutput(photoOutputConfig);
+    const videoOutputConfig = useMemo(
+      () => ({
+        enableAudio: true,
+        targetResolution: { width: 1280, height: 720 },
+      }),
+      []
+    );
+    const videoOutput = useVideoOutput(videoOutputConfig);
+
+    const lastStatusTimeRef = useRef(0);
+    const lastHadFaceRef = useRef(false);
 
     const { hasPermission: hasCameraPermission, canRequestPermission: canRequestCameraPermission, requestPermission: requestCameraPermission } = cameraPermission;
     const { hasPermission: hasMicrophonePermission, canRequestPermission: canRequestMicrophonePermission, requestPermission: requestMicrophonePermission } = microphonePermission;
@@ -134,13 +145,16 @@ export const PlatformCameraView = forwardRef<CameraViewRef, CameraViewProps>(
       (faces: NativeFace[]) => {
         const face = faces[0];
         if (!face) {
-          hasFaceRef.current = false;
-          setHasFace(false);
-          onFaceStatusChangeRef.current?.({
-            quality: 'searching',
-            lightingStatus: 'searching',
-            hasFace: false,
-          });
+          if (hasFaceRef.current) {
+            hasFaceRef.current = false;
+            lastHadFaceRef.current = false;
+            setHasFace(false);
+            onFaceStatusChangeRef.current?.({
+              quality: 'searching',
+              lightingStatus: 'searching',
+              hasFace: false,
+            });
+          }
           return;
         }
 
@@ -269,15 +283,24 @@ export const PlatformCameraView = forwardRef<CameraViewRef, CameraViewProps>(
         };
 
         landmarksRef.current = smoothedLandmarks;
+        const hadFace = hasFaceRef.current;
         hasFaceRef.current = true;
         setLandmarks(smoothedLandmarks);
-        setHasFace(true);
-        onFaceStatusChangeRef.current?.({
-          quality: 'poor',
-          lightingStatus: 'good',
-          hasFace: true,
-          faceWidth: nextLandmarks.faceWidth,
-        });
+        if (!hadFace) {
+          setHasFace(true);
+        }
+
+        const now = Date.now();
+        if (!lastHadFaceRef.current || now - lastStatusTimeRef.current > 600) {
+          lastStatusTimeRef.current = now;
+          lastHadFaceRef.current = true;
+          onFaceStatusChangeRef.current?.({
+            quality: 'perfect',
+            lightingStatus: 'good',
+            hasFace: true,
+            faceWidth: nextLandmarks.faceWidth,
+          });
+        }
       },
       []
     );
@@ -295,15 +318,26 @@ export const PlatformCameraView = forwardRef<CameraViewRef, CameraViewProps>(
       onCameraReadyRef.current?.();
     }, []);
 
+    const faceDetectorConfig = useMemo(
+      () => ({
+        outputResolution: 'preview' as const,
+        runLandmarks: true,
+        trackingEnabled: true,
+      }),
+      []
+    );
+
     const faceDetectorOutput = useFaceDetectorOutput({
       onFacesDetected: handleFacesDetected,
       onError: handleDetectorError,
-      outputResolution: 'preview',
-      runLandmarks: true,
-      trackingEnabled: true
+      ...faceDetectorConfig,
     });
 
-    const cameraOutputs = useMemo(() => [faceDetectorOutput, photoOutput, videoOutput], [faceDetectorOutput, photoOutput, videoOutput]);
+    const cameraOutputs = useMemo(
+      () => [faceDetectorOutput, photoOutput, videoOutput],
+      [faceDetectorOutput, photoOutput, videoOutput]
+    );
+
     const canRenderCamera = active && hasCameraPermission && Boolean(device);
     const cameraPreview = useMemo(
       () =>
@@ -332,7 +366,6 @@ export const PlatformCameraView = forwardRef<CameraViewRef, CameraViewProps>(
         flash,
         handleCameraStarted,
         handleDetectorError,
-        handleFacesDetected,
       ]
     );
 
