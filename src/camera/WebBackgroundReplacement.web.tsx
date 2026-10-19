@@ -23,41 +23,6 @@ type Scene = NonNullable<Lens['config']['background']>['scene'];
 
 const sceneForLens = (lens: Lens): Scene => lens.config.background?.scene || 'forest';
 
-const SCENE_IMAGE_URLS: Partial<Record<Scene, string>> = {
-  office: 'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=1200&q=80',
-  park: 'https://images.unsplash.com/photo-1519331379826-f10be5486c6f?auto=format&fit=crop&w=1200&q=80',
-  car: 'https://images.unsplash.com/photo-1549399542-7e3f8b79c341?auto=format&fit=crop&w=1200&q=80',
-  cafe: 'https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&fit=crop&w=1200&q=80',
-  gaming: 'https://images.unsplash.com/photo-1616588589676-62b3bd4ff6d2?auto=format&fit=crop&w=1200&q=80',
-  penthouse: 'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?auto=format&fit=crop&w=1200&q=80',
-  'cozy-room': 'https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&w=1200&q=80',
-  city: 'https://images.unsplash.com/photo-1514565131-fce0801e5785?auto=format&fit=crop&w=1200&q=80',
-  beach: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1200&q=80',
-  mountains: 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=1200&q=80',
-  forest: 'https://images.unsplash.com/photo-1448375240586-882707db888b?auto=format&fit=crop&w=1200&q=80',
-  'studio-pro': 'https://images.unsplash.com/photo-1598899134739-24c46f58b8c0?auto=format&fit=crop&w=1200&q=80',
-  desert: 'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1200&q=80',
-  'snow-cabin': 'https://images.unsplash.com/photo-1517825738774-7de9363ef735?auto=format&fit=crop&w=1200&q=80',
-  waterfall: 'https://images.unsplash.com/photo-1432405972618-c60b0225b8f9?auto=format&fit=crop&w=1200&q=80',
-  rainforest: 'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?auto=format&fit=crop&w=1200&q=80',
-  savanna: 'https://images.unsplash.com/photo-1549366021-9f761d450615?auto=format&fit=crop&w=1200&q=80',
-  'northern-coast': 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1200&q=80',
-  'lavender-field': 'https://images.unsplash.com/photo-1499002238440-d264edd596ec?auto=format&fit=crop&w=1200&q=80',
-  'bamboo-garden': 'https://images.unsplash.com/photo-1528360983277-13d401cdc186?auto=format&fit=crop&w=1200&q=80',
-  'ancient-ruins': 'https://images.unsplash.com/photo-1548013146-72479768bada?auto=format&fit=crop&w=1200&q=80',
-  'space-station': 'https://images.unsplash.com/photo-1446776811953-b23d57bd21aa?auto=format&fit=crop&w=1200&q=80',
-  'moon-base': 'https://images.unsplash.com/photo-1534791547706-5e9323b9e9c1?auto=format&fit=crop&w=1200&q=80',
-  'mars-colony': 'https://images.unsplash.com/photo-1614728894747-a83421e2b9c9?auto=format&fit=crop&w=1200&q=80',
-  'cloud-city': 'https://images.unsplash.com/photo-1519608487953-e999c86e7455?auto=format&fit=crop&w=1200&q=80',
-  'castle-hall': 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=1200&q=80',
-  library: 'https://images.unsplash.com/photo-1521587760476-6c12a4b040da?auto=format&fit=crop&w=1200&q=80',
-  'art-gallery': 'https://images.unsplash.com/photo-1561214115-f2f134cc4912?auto=format&fit=crop&w=1200&q=80',
-  'concert-stage': 'https://images.unsplash.com/photo-1501386761578-eac5c94b800a?auto=format&fit=crop&w=1200&q=80',
-  'rooftop-night': 'https://images.unsplash.com/photo-1519501025264-65ba15a82390?auto=format&fit=crop&w=1200&q=80',
-  'street-market': 'https://images.unsplash.com/photo-1488459716781-31db52582fe9?auto=format&fit=crop&w=1200&q=80',
-  'underwater-city': 'https://images.unsplash.com/photo-1530053969600-caed2596d242?auto=format&fit=crop&w=1200&q=80',
-};
-
 const imageCache: Map<string, HTMLImageElement> = new Map();
 
 const getPreloadedImage = (url: string): HTMLImageElement | null => {
@@ -250,7 +215,9 @@ const drawScene = (
   arEffect?: ARSceneEffect
 ) => {
   const drift = Math.sin(time * 0.00025) * width * 0.04;
-  const imageUrl = customImageUri || SCENE_IMAGE_URLS[scene];
+  // Preset backgrounds are drawn locally so using a lens never requires a
+  // remote image request. User-picked images remain local browser assets.
+  const imageUrl = customImageUri;
   const realImg = imageUrl ? getPreloadedImage(imageUrl) : null;
 
   if (customVideo) {
@@ -484,23 +451,27 @@ const getOrInitSegmenter = async (): Promise<any> => {
   if (cachedSegmenter) return cachedSegmenter;
   if (!globalSegmenterPromise) {
     globalSegmenterPromise = (async () => {
-      const vision = await (Function('url', 'return import(url)')(
-        'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/vision_bundle.mjs'
-      ) as Promise<any>);
+      const runtimeUrl = `${window.location.origin}/mediapipe/vision_bundle.mjs`;
+      const vision = await (Function('url', 'return import(url)')(runtimeUrl) as Promise<any>);
       if (!vision?.ImageSegmenter || !vision?.FilesetResolver) return null;
       const fileset = await vision.FilesetResolver.forVisionTasks(
-        'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm'
+        `${window.location.origin}/mediapipe/wasm`
       );
-      const segmenter = await vision.ImageSegmenter.createFromOptions(fileset, {
+      const options = (delegate: 'GPU' | 'CPU') => ({
         baseOptions: {
-          modelAssetPath:
-            'https://storage.googleapis.com/mediapipe-models/image_segmenter/selfie_segmenter/float16/latest/selfie_segmenter.tflite',
-          delegate: 'GPU',
+          modelAssetPath: `${window.location.origin}/models/selfie_segmenter.tflite`,
+          delegate,
         },
-        runningMode: 'VIDEO',
+        runningMode: 'VIDEO' as const,
         outputCategoryMask: false,
         outputConfidenceMasks: true,
       });
+      let segmenter;
+      try {
+        segmenter = await vision.ImageSegmenter.createFromOptions(fileset, options('GPU'));
+      } catch {
+        segmenter = await vision.ImageSegmenter.createFromOptions(fileset, options('CPU'));
+      }
       cachedSegmenter = segmenter;
       return segmenter;
     })().catch((err) => {

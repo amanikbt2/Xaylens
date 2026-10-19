@@ -115,7 +115,7 @@ export const OnlineLensContainer: React.FC<OnlineLensContainerProps> = ({
               <Ionicons name="cloud-offline-outline" size={42} color={Colors.accentYellow} />
             </View>
 
-            <Text style={styles.errorTitle}>You're Offline</Text>
+            <Text style={styles.errorTitle}>You&apos;re Offline</Text>
             <Text style={styles.errorDescription}>
               Unable to reach the online WebGL lens server. Switch to native lenses to use Xaylens without internet connection.
             </Text>

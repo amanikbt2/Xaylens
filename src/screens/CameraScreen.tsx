@@ -30,6 +30,8 @@ import { useFaceStatus } from '../hooks/useFaceStatus';
 import { Colors } from '../constants/colors';
 import { CapturedMedia } from '../types/camera';
 import { Lens } from '../types/lens';
+import * as ImagePicker from 'expo-image-picker';
+import { CUSTOM_BACKGROUND_LENS_ID, createCustomBackgroundLens } from '../lenses/customBackground';
 
 export const CameraScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
@@ -185,8 +187,31 @@ export const CameraScreen: React.FC = () => {
   }, []);
 
   const handleSelectExploreLens = useCallback(
-    (lens: Lens, tab?: CategoryFilter) => {
-      injectAndSelectLens(lens, facing, tab);
+    async (lens: Lens, tab?: CategoryFilter) => {
+      if (lens.id !== CUSTOM_BACKGROUND_LENS_ID) {
+        injectAndSelectLens(lens, facing, tab);
+        return;
+      }
+
+      try {
+        if (Platform.OS !== 'web') {
+          const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+          if (!permission.granted) return;
+        }
+
+        const result = await ImagePicker.launchImageLibraryAsync({
+          mediaTypes: ['images', 'videos'],
+          allowsEditing: false,
+          quality: 1,
+        });
+        if (result.canceled || !result.assets[0]) return;
+
+        const asset = result.assets[0];
+        const mediaType = asset.type === 'video' ? 'video' : 'image';
+        injectAndSelectLens(createCustomBackgroundLens(asset.uri, mediaType), facing, 'background');
+      } catch (error) {
+        console.warn('Could not open the background media picker:', error);
+      }
     },
     [facing, injectAndSelectLens]
   );

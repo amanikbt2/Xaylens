@@ -6,7 +6,7 @@ export const customBackgroundLens: Lens = {
   id: CUSTOM_BACKGROUND_LENS_ID,
   name: 'Choose your own',
   category: 'background',
-  description: 'Pick any photo from your library and use it as your background.',
+  description: 'Choose a photo or video from your library as your background.',
   supportedCamera: 'both',
   effectType: 'overlay',
   iconName: 'image-outline',

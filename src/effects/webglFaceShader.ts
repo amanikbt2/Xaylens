@@ -332,10 +332,8 @@ const getSingleLensModeBit = (lensId: string): number => {
 };
 
 /**
- * Real-Time Browser Face Landmark Tracker:
- * 1. MediaPipe FaceLandmarker (478 3D Face Mesh points loaded dynamically from CDN when online)
- * 2. Native Browser FaceDetector API (with estimated eye/nose/mouth landmarks)
- * No face detection is claimed when neither detector is available.
+ * Real-Time Browser Face Landmark Tracker. The model, runtime, and WASM files
+ * are bundled with the app so inference stays on-device and works offline.
  */
 export class WebVideoFaceDetector {
   private nativeDetector: any = null;
@@ -358,73 +356,47 @@ export class WebVideoFaceDetector {
       }
     }
 
-    // Asynchronously load MediaPipe 478-point FaceLandmarker in background for pinpoint 3D tracking
+    // Load the bundled model and runtime in the background for 3D tracking.
     this.initMediaPipeInBackground();
   }
 
   private async initMediaPipeInBackground() {
     if (typeof window === 'undefined' || typeof document === 'undefined') return;
-    const cdnRoots = [
-      'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14',
-      'https://unpkg.com/@mediapipe/tasks-vision@0.10.14',
-    ];
-    let lastError: unknown;
+    try {
+      const runtimeUrl = `${window.location.origin}/mediapipe/vision_bundle.mjs`;
+      const vision = await (Function('url', 'return import(url)')(runtimeUrl) as Promise<any>);
+      const assetRoot = `${window.location.origin}/mediapipe/wasm`;
+      const modelAssetPath = `${window.location.origin}/models/face_landmarker.task`;
+      const filesetResolver = await vision.FilesetResolver.forVisionTasks(assetRoot);
+      const createOptions = (delegate: 'GPU' | 'CPU') => ({
+        baseOptions: { modelAssetPath, delegate },
+        runningMode: 'VIDEO' as const,
+        numFaces: 1,
+        // A little below the default helps with dim or soft-focus webcams.
+        minFaceDetectionConfidence: 0.35,
+        minFacePresenceConfidence: 0.35,
+        minTrackingConfidence: 0.35,
+      });
 
-    for (const cdnRoot of cdnRoots) {
       try {
-        // Keep this as a browser runtime import so Metro does not try to bundle
-        // the CDN package into native builds.
-        const vision = await (Function(
-          'url',
-          'return import(url)'
-        )(`${cdnRoot}/vision_bundle.mjs`) as Promise<any>);
-
-        if (!vision?.FilesetResolver || !vision?.FaceLandmarker) {
-          throw new Error('Face model package did not initialize.');
-        }
-        const filesetResolver = await vision.FilesetResolver.forVisionTasks(
-          `${cdnRoot}/wasm`
+        this.mediaPipeLandmarker = await vision.FaceLandmarker.createFromOptions(
+          filesetResolver,
+          createOptions('GPU')
         );
-        const modelAssetPath =
-          'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task';
-        const createOptions = (delegate: 'GPU' | 'CPU') => ({
-          baseOptions: {
-            modelAssetPath,
-            delegate,
-          },
-          runningMode: 'VIDEO',
-          numFaces: 1,
-          // Lower thresholds help recover faces in dim, soft-focus webcams.
-          // Keep them above zero to avoid locking onto background patterns.
-          minFaceDetectionConfidence: 0.35,
-          minFacePresenceConfidence: 0.35,
-          minTrackingConfidence: 0.35,
-        });
-
-        try {
-          this.mediaPipeLandmarker = await vision.FaceLandmarker.createFromOptions(
-            filesetResolver,
-            createOptions('GPU')
-          );
-        } catch {
-          // Android browsers may expose WebGL but still reject the GPU delegate.
-          // CPU keeps the full 478-point model instead of using rough motion tracking.
-          this.mediaPipeLandmarker = await vision.FaceLandmarker.createFromOptions(
-            filesetResolver,
-            createOptions('CPU')
-          );
-        }
-        this.detectorStatus = 'ready';
-        this.detectorError = null;
-        return;
-      } catch (error) {
-        lastError = error;
+      } catch {
+        // Keep full landmark tracking on browsers whose GPU delegate is unsupported.
+        this.mediaPipeLandmarker = await vision.FaceLandmarker.createFromOptions(
+          filesetResolver,
+          createOptions('CPU')
+        );
       }
+      this.detectorStatus = 'ready';
+      this.detectorError = null;
+    } catch (error) {
+      this.detectorStatus = this.nativeDetector ? 'ready' : 'unavailable';
+      this.detectorError = error instanceof Error ? error.message : 'Could not load the local face model.';
+      console.warn('Xaylens local web face model unavailable:', this.detectorError);
     }
-
-    this.detectorStatus = this.nativeDetector ? 'ready' : 'unavailable';
-    this.detectorError = lastError instanceof Error ? lastError.message : 'Could not load the face model.';
-    console.warn('Xaylens web face model unavailable:', this.detectorError);
   }
 
   public getStatus() {
