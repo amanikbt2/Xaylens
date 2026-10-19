@@ -1155,6 +1155,55 @@ const RAW_LENSES: Lens[] = [
   ...EXPANDED_LENSES,
 ];
 
+const CURATED_LENS_IDS = new Set([
+  'normal',
+  'big-nose',
+  'big-eyes',
+  'big-mouth',
+  'wide-face',
+  'tiny-face',
+  'alien',
+  'puppy',
+  'bunny',
+  'funny-glasses',
+  'kitty-cat',
+  'teddy-bear',
+  'fox-spirit',
+  'panda-bear',
+  'froggy',
+  'tiger-stripes',
+  'koala',
+  'wolf-howl',
+  'angel-halo',
+  'matrix-code',
+  'bg-forest',
+  'bg-beach',
+  'bg-mountains',
+  'bg-sunset',
+  'bg-city',
+  'bg-cozy-room',
+  'bg-galaxy',
+  'bg-cyber-alley',
+  'bg-underwater',
+  'bg-volcano',
+  'bg-aurora',
+  'bg-sakura',
+  'bg-synth-sun',
+  'bg-studio-pro',
+  'bg-office',
+  'bg-park',
+  'bg-car',
+  'bg-cafe',
+  'bg-gaming',
+  'bg-penthouse',
+  'bg-desert',
+  'bg-snow-cabin',
+  'bg-waterfall',
+  'bg-rainforest',
+  'bg-northern-coast',
+  'funny-wobble-nose',
+]);
+
 export const ALL_50_LENSES: Lens[] = RAW_LENSES.map((lens, idx) => {
   const num = idx + 1;
   const code = `L${num < 10 ? '00' : num < 100 ? '0' : ''}${num}`;
@@ -1164,4 +1213,4 @@ export const ALL_50_LENSES: Lens[] = RAW_LENSES.map((lens, idx) => {
     code,
     name: `${code}. ${cleanName}`,
   };
-});
+}).filter((lens) => CURATED_LENS_IDS.has(lens.id));

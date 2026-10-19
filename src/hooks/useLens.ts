@@ -1,12 +1,12 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Lens, LensCategory } from '../types/lens';
-import { ALL_50_LENSES, ALL_LENSES, AR_LENSES, customBackgroundLens, normalLens } from '../lenses';
+import { ALL_50_LENSES, ALL_LENSES, normalLens } from '../lenses';
 import { triggerLensSelectHaptic } from '../utils/haptics';
 
 const FAVORITES_STORAGE_KEY = '@xaylens_favorite_lenses';
 
-export type CategoryFilter = 'all' | 'favorites' | 'ar' | LensCategory;
+export type CategoryFilter = 'all' | 'favorites' | LensCategory;
 
 export const useLens = (initialLensId: string = 'normal') => {
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>('all');
@@ -72,7 +72,16 @@ export const useLens = (initialLensId: string = 'normal') => {
           try {
             const parsed = JSON.parse(stored);
             if (Array.isArray(parsed)) {
-              setFavoriteIds(parsed);
+              const validFavorites = parsed.filter(
+                (id): id is string =>
+                  typeof id === 'string' && ALL_50_LENSES.some((lens) => lens.id === id)
+              );
+              setFavoriteIds(validFavorites);
+              if (validFavorites.length !== parsed.length) {
+                AsyncStorage.setItem(FAVORITES_STORAGE_KEY, JSON.stringify(validFavorites)).catch(
+                  () => {}
+                );
+              }
             }
           } catch {
             // Ignore parse error
@@ -125,21 +134,13 @@ export const useLens = (initialLensId: string = 'normal') => {
       return favs;
     }
 
-    if (categoryFilter === 'ar') {
-      return [normalItem, ...AR_LENSES];
-    }
-
     // Filter strictly to the chosen category
     const catLenses = ALL_50_LENSES.filter((l) => l.category === categoryFilter);
-    if (categoryFilter === 'background') {
-      const customItem = activeLens.id === customBackgroundLens.id ? activeLens : customBackgroundLens;
-      return [normalItem, customItem, ...catLenses];
-    }
     if (!catLenses.some((l) => l.id === 'normal')) {
       return [normalItem, ...catLenses];
     }
     return catLenses;
-  }, [activeLens, categoryFilter, favoriteIds]);
+  }, [categoryFilter, favoriteIds]);
 
   const selectLens = useCallback(
     (lens: Lens, cameraFacing: 'front' | 'back' = 'front') => {

@@ -7,7 +7,9 @@ export type FaceStatusType =
   | 'perfect'
   | 'retrying'
   | 'lighting'
-  | 'center';
+  | 'center'
+  | 'loading'
+  | 'unavailable';
 
 export interface FaceStatus {
   type: FaceStatusType;
@@ -22,7 +24,8 @@ export const useFaceStatus = (
   trackingQuality?: 'perfect' | 'poor' | 'searching',
   lightingStatus?: 'good' | 'low_light' | 'backlit' | 'searching',
   hasFace: boolean = false,
-  faceWidth?: number
+  faceWidth?: number,
+  detectorStatus?: 'loading' | 'ready' | 'unavailable'
 ) => {
   const [status, setStatus] = useState<FaceStatus>({
     type: 'identifying',
@@ -84,6 +87,22 @@ export const useFaceStatus = (
           iconName: 'person-outline',
         });
         break;
+      case 'loading':
+        setStatus({
+          type: 'loading',
+          text: customText || 'Loading face model…',
+          dotColor: '#F59E0B',
+          iconName: 'cloud-download-outline',
+        });
+        break;
+      case 'unavailable':
+        setStatus({
+          type: 'unavailable',
+          text: customText || 'Face model unavailable • Check internet',
+          dotColor: '#EF4444',
+          iconName: 'cloud-offline-outline',
+        });
+        break;
     }
   }, []);
 
@@ -102,7 +121,11 @@ export const useFaceStatus = (
       return;
     }
 
-    if (!hasFace || trackingQuality === 'searching' || lightingStatus === 'searching') {
+    if (detectorStatus === 'loading' && !hasFace) {
+      setStatusState('loading');
+    } else if (detectorStatus === 'unavailable' && !hasFace) {
+      setStatusState('unavailable');
+    } else if (!hasFace || trackingQuality === 'searching' || lightingStatus === 'searching') {
       setStatusState('identifying', 'Searching face...');
     } else if (lightingStatus === 'low_light' || lightingStatus === 'backlit') {
       setStatusState('lighting', 'Low light • Check lighting');
@@ -123,7 +146,7 @@ export const useFaceStatus = (
     return () => {
       if (splashTimerRef.current) clearTimeout(splashTimerRef.current);
     };
-  }, [trackingQuality, lightingStatus, hasFace, faceWidth, facing, activeLensId, setStatusState]);
+  }, [trackingQuality, lightingStatus, hasFace, faceWidth, facing, activeLensId, detectorStatus, setStatusState]);
 
   const triggerRetry = useCallback(() => {
     setStatusState('retrying', 'Tracking lost, retrying...');

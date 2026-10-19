@@ -1,4 +1,4 @@
-import { FaceLandmarks } from '../types/lens';
+import { FaceLandmarks, Lens } from '../types/lens';
 
 export const VERTEX_SHADER_SOURCE = `
 attribute vec2 a_position;
@@ -17,6 +17,7 @@ precision highp float;
 varying vec2 v_uv;
 uniform sampler2D u_tex;
 uniform vec2 u_resolution;
+uniform vec2 u_videoResolution;
 uniform float u_mirror;
 uniform int u_lensMode;
 uniform vec2 u_nose;
@@ -28,6 +29,8 @@ uniform vec2 u_chin;
 uniform float u_faceScale;
 uniform float u_roll;
 uniform float u_time;
+uniform vec4 u_customDistortion;
+uniform vec2 u_customCenter;
 
 vec2 rotate2D(vec2 v, float angle) {
   float c = cos(angle);
@@ -82,6 +85,18 @@ vec2 warpHorizontalStretch(vec2 uv, vec2 center, vec2 radii, float strength, flo
   return center + vec2(unrotated.x / aspect, unrotated.y);
 }
 
+vec2 warpVerticalStretch(vec2 uv, vec2 center, vec2 radii, float strength, float aspect) {
+  vec2 delta = uv - center;
+  vec2 corr = vec2(delta.x * aspect, delta.y);
+  vec2 normDelta = vec2(corr.x / max(radii.x, 0.001), corr.y / max(radii.y, 0.001));
+  float dist = length(normDelta);
+  if (dist >= 1.0) return uv;
+  float w = 1.0 - dist * dist;
+  w = w * w;
+  float scaleY = 1.0 / (1.0 + strength * w);
+  return center + vec2(delta.x, delta.y * scaleY);
+}
+
 // Swirl vortex twist
 vec2 warpSwirl(vec2 uv, vec2 center, float radius, float angleRad, float aspect) {
   vec2 delta = uv - center;
@@ -113,7 +128,7 @@ void main() {
   float s = clamp(u_faceScale, 0.55, 1.85);
 
   // 1: BIG NOSE (TikTok Giant Bulbous Nose Magnifier locked onto real nose)
-  if (hasMode(u_lensMode, 1) || u_lensMode == 1) {
+  if (hasMode(u_lensMode, 1)) {
     float pulse = 1.0 + sin(u_time * 3.0) * 0.04;
     // Wide nostril flare aligned with head roll
     uv = warpEllipse(uv, u_nose + vec2(0.0, 0.018 * s), vec2(0.24 * s, 0.14 * s), 0.95 * pulse, aspect, u_roll);
@@ -124,7 +139,7 @@ void main() {
     uv = warpBulgePinch(uv, bridge, 0.09 * s, -0.28, aspect);
   }
   // 2: BIG EYES (TikTok Huge Bug-Eye / Anime Magnifier locked onto left & right eyes)
-  if (hasMode(u_lensMode, 2) || u_lensMode == 2) {
+  if (hasMode(u_lensMode, 2)) {
     float pulse = 1.0 + sin(u_time * 2.5) * 0.03;
     // Left & Right Eye 2.45x Magnification
     uv = warpBulgePinch(uv, u_leftEye, 0.165 * s, 1.45 * pulse, aspect);
@@ -134,25 +149,25 @@ void main() {
     uv = warpBulgePinch(uv, u_chin, 0.16 * s, -0.28, aspect);
   }
   // 3: BIG MOUTH (TikTok Giant Smile / Mouth Magnifier locked onto mouth)
-  if (hasMode(u_lensMode, 4) || u_lensMode == 3) {
+  if (hasMode(u_lensMode, 4)) {
     float pulse = 1.0 + sin(u_time * 3.2) * 0.05;
     uv = warpEllipse(uv, u_mouth, vec2(0.28 * s, 0.18 * s), 1.58 * pulse, aspect, u_roll);
     uv = warpBulgePinch(uv, u_mouth, 0.19 * s, 0.78 * pulse, aspect);
   }
   // 4: TINY FACE (TikTok Miniature Face Features on Normal Head)
-  if (hasMode(u_lensMode, 8) || u_lensMode == 4) {
+  if (hasMode(u_lensMode, 8)) {
     vec2 faceCenter = mix(u_nose, u_mouth, 0.35);
     uv = warpBulgePinch(uv, faceCenter, 0.34 * s, -0.68, aspect);
     uv = warpBulgePinch(uv, u_nose, 0.18 * s, -0.35, aspect);
   }
   // 5: WIDE FACE (TikTok Wide Jaw / Gigachad Horizontal Stretch)
-  if (hasMode(u_lensMode, 16) || u_lensMode == 5) {
+  if (hasMode(u_lensMode, 16)) {
     vec2 midFace = mix(u_nose, u_mouth, 0.4);
     uv = warpHorizontalStretch(uv, midFace, vec2(0.38 * s, 0.32 * s), 1.18, aspect, u_roll);
     uv = warpEllipse(uv, u_chin, vec2(0.28 * s, 0.16 * s), 0.68, aspect, u_roll);
   }
   // 6: ALIEN (Cranium Dome Bulge + V-Chin Pinch + Huge Slanted Eyes + Bio Tint)
-  if (hasMode(u_lensMode, 32) || u_lensMode == 6) {
+  if (hasMode(u_lensMode, 32)) {
     uv = warpEllipse(uv, u_forehead, vec2(0.34 * s, 0.24 * s), 0.92, aspect, u_roll);
     uv = warpBulgePinch(uv, u_leftEye, 0.16 * s, 1.30, aspect);
     uv = warpBulgePinch(uv, u_rightEye, 0.16 * s, 1.30, aspect);
@@ -161,24 +176,62 @@ void main() {
     uv = warpBulgePinch(uv, u_mouth, 0.14 * s, -0.38, aspect);
   }
   // 7: SWIRL FACE (TikTok Vortex Twister following nose center)
-  if (hasMode(u_lensMode, 64) || u_lensMode == 7) {
+  if (hasMode(u_lensMode, 64)) {
     float dynamicAngle = 2.35 * cos(u_time * 1.2);
     uv = warpSwirl(uv, u_nose, 0.32 * s, dynamicAngle, aspect);
   }
   // 8+: PUPPY / BUNNY / GLASSES (Subtle Cute Eye Enlargement)
-  if (hasMode(u_lensMode, 128) || u_lensMode >= 8) {
+  if (hasMode(u_lensMode, 128)) {
     uv = warpBulgePinch(uv, u_leftEye, 0.13 * s, 0.42, aspect);
     uv = warpBulgePinch(uv, u_rightEye, 0.13 * s, 0.42, aspect);
   }
 
-  vec2 sampleUv = clamp(uv, 0.002, 0.998);
+  // Config-driven path for catalog lenses without a bespoke shader mode.
+  // Params are [type, intensity, radius, targetRegion], where type is
+  // bulge=0, pinch=1, stretch_h=2, stretch_v=3, complex_alien=4.
+  if (hasMode(u_lensMode, 256)) {
+    float distortionType = u_customDistortion.x;
+    float intensity = clamp(u_customDistortion.y, 0.0, 1.0);
+    float radius = clamp(u_customDistortion.z * s, 0.08, 0.85);
+    float targetRegion = u_customDistortion.w;
+    if (targetRegion == 1.0) {
+      float eyeRadius = max(0.08, radius * 0.42);
+      float eyeStrength = distortionType == 1.0 ? -intensity : intensity;
+      uv = warpBulgePinch(uv, u_leftEye, eyeRadius, eyeStrength, aspect);
+      uv = warpBulgePinch(uv, u_rightEye, eyeRadius, eyeStrength, aspect);
+    } else if (distortionType == 0.0 || distortionType == 1.0) {
+      float strength = distortionType == 1.0 ? -intensity : intensity;
+      uv = warpBulgePinch(uv, u_customCenter, radius, strength, aspect);
+    } else if (distortionType == 2.0) {
+      uv = warpHorizontalStretch(uv, u_customCenter, vec2(radius, radius * 0.8), -intensity * 0.55, aspect, u_roll);
+    } else if (distortionType == 3.0) {
+      uv = warpVerticalStretch(uv, u_customCenter, vec2(radius * 0.8, radius), -intensity * 0.55, aspect);
+    } else {
+      uv = warpEllipse(uv, u_forehead, vec2(radius * 0.8, radius * 0.55), intensity, aspect, u_roll);
+      uv = warpBulgePinch(uv, u_chin, radius * 0.55, -intensity * 0.7, aspect);
+      uv = warpBulgePinch(uv, u_leftEye, radius * 0.35, intensity * 0.7, aspect);
+      uv = warpBulgePinch(uv, u_rightEye, radius * 0.35, intensity * 0.7, aspect);
+    }
+  }
+
+  // Match CSS object-fit: cover. The shader canvas itself is a framebuffer,
+  // so CSS object-fit does not crop the video texture for us.
+  float sourceAspect = u_videoResolution.x / max(u_videoResolution.y, 1.0);
+  float viewAspect = u_resolution.x / max(u_resolution.y, 1.0);
+  vec2 sampleUv = uv;
+  if (sourceAspect > viewAspect) {
+    sampleUv.x = 0.5 + (sampleUv.x - 0.5) * (viewAspect / sourceAspect);
+  } else {
+    sampleUv.y = 0.5 + (sampleUv.y - 0.5) * (sourceAspect / viewAspect);
+  }
+  sampleUv = clamp(sampleUv, 0.002, 0.998);
   if (u_mirror > 0.5) {
     sampleUv.x = 1.0 - sampleUv.x;
   }
 
   vec4 color = texture2D(u_tex, sampleUv);
 
-  if (hasMode(u_lensMode, 32) || u_lensMode == 6) {
+  if (hasMode(u_lensMode, 32)) {
     vec2 dFace = (v_uv - u_nose) * vec2(aspect, 1.0);
     float faceMask = smoothstep(0.36 * s, 0.08 * s, length(dFace));
     vec3 alienTint = vec3(color.r * 0.68, min(1.0, color.g * 1.25 + 0.06), color.b * 0.88);
@@ -199,8 +252,59 @@ export const getLensShaderMode = (lensInput: any): number => {
   for (const l of list) {
     if (!l || !l.id || l.id === 'normal') continue;
     mask |= getSingleLensModeBit(l.id);
+    if (!getSingleLensModeBit(l.id) && l.config?.distortion) mask |= 256;
   }
   return mask || 0;
+};
+
+export const getCustomLensDistortion = (
+  lensInput: Lens | Lens[] | null | undefined,
+  landmarks: FaceLandmarks
+): { params: [number, number, number, number]; center: { x: number; y: number } } => {
+  const list = Array.isArray(lensInput) ? lensInput : lensInput ? [lensInput] : [];
+  const lens = list.find(
+    (item) => item?.config?.distortion && getSingleLensModeBit(item.id) === 0
+  );
+  const distortion = lens?.config?.distortion;
+  if (!distortion) return { params: [0, 0, 0, 0], center: landmarks.nose };
+
+  const type = {
+    bulge: 0,
+    pinch: 1,
+    stretch_h: 2,
+    stretch_v: 3,
+    complex_alien: 4,
+  }[distortion.type];
+  const region = {
+    eyes: 1,
+    nose: 2,
+    mouth: 3,
+    forehead: 4,
+    jaw: 5,
+    face: 6,
+    all: 6,
+  }[distortion.targetRegion];
+
+  let center = distortion.center || landmarks.nose;
+  if (distortion.targetRegion === 'eyes') {
+    center = {
+      x: (landmarks.leftEye.x + landmarks.rightEye.x) / 2,
+      y: (landmarks.leftEye.y + landmarks.rightEye.y) / 2,
+    };
+  } else if (distortion.targetRegion === 'mouth') center = landmarks.mouth;
+  else if (distortion.targetRegion === 'forehead') center = landmarks.forehead;
+  else if (distortion.targetRegion === 'jaw') center = landmarks.chin;
+  else if (distortion.targetRegion === 'face' || distortion.targetRegion === 'all') {
+    center = {
+      x: (landmarks.forehead.x + landmarks.chin.x) / 2,
+      y: (landmarks.forehead.y + landmarks.chin.y) / 2,
+    };
+  }
+
+  return {
+    params: [type, distortion.intensity, distortion.radius, region],
+    center,
+  };
 };
 
 const getSingleLensModeBit = (lensId: string): number => {
@@ -228,31 +332,19 @@ const getSingleLensModeBit = (lensId: string): number => {
 };
 
 /**
- * Smart 3-Tier Real-Time Face & Body Landmark Tracker:
+ * Real-Time Browser Face Landmark Tracker:
  * 1. MediaPipe FaceLandmarker (478 3D Face Mesh points loaded dynamically from CDN when online)
- * 2. Native Browser FaceDetector API (with eye/nose/mouth landmark parsing)
- * 3. Instant Offline 96x72 Skin + Motion Optical Flow + Dark-Valley Eye/Mouth Detector
+ * 2. Native Browser FaceDetector API (with estimated eye/nose/mouth landmarks)
+ * No face detection is claimed when neither detector is available.
  */
 export class WebVideoFaceDetector {
-  private offscreenCanvas: HTMLCanvasElement | null = null;
-  private offscreenCtx: CanvasRenderingContext2D | null = null;
-  private prevLuma: Float32Array | null = null;
   private nativeDetector: any = null;
   private mediaPipeLandmarker: any = null;
   private isDetecting = false;
-  private lastTrackedCenter = { x: 0.5, y: 0.48, scale: 0.34, roll: 0 };
+  private detectorStatus: 'loading' | 'ready' | 'unavailable' = 'loading';
+  private detectorError: string | null = null;
 
   constructor() {
-    if (typeof document !== 'undefined') {
-      this.offscreenCanvas = document.createElement('canvas');
-      this.offscreenCanvas.width = 96;
-      this.offscreenCanvas.height = 72;
-      this.offscreenCtx = this.offscreenCanvas.getContext('2d', {
-        willReadFrequently: true,
-      });
-      this.prevLuma = new Float32Array(96 * 72);
-    }
-
     if (typeof window !== 'undefined' && 'FaceDetector' in window) {
       try {
         const FaceDetectorCtor = (window as any).FaceDetector;
@@ -260,6 +352,7 @@ export class WebVideoFaceDetector {
           fastMode: true,
           maxDetectedFaces: 1,
         });
+        this.detectorStatus = 'ready';
       } catch {
         this.nativeDetector = null;
       }
@@ -271,18 +364,26 @@ export class WebVideoFaceDetector {
 
   private async initMediaPipeInBackground() {
     if (typeof window === 'undefined' || typeof document === 'undefined') return;
-    try {
-      // Load MediaPipe Tasks Vision ESM bundle via dynamic import
-      const visionModuleUrl =
-        'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/vision_bundle.mjs';
-      const vision = await (Function(
-        'url',
-        'return import(url)'
-      )(visionModuleUrl) as Promise<any>);
+    const cdnRoots = [
+      'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14',
+      'https://unpkg.com/@mediapipe/tasks-vision@0.10.14',
+    ];
+    let lastError: unknown;
 
-      if (vision && vision.FilesetResolver && vision.FaceLandmarker) {
+    for (const cdnRoot of cdnRoots) {
+      try {
+        // Keep this as a browser runtime import so Metro does not try to bundle
+        // the CDN package into native builds.
+        const vision = await (Function(
+          'url',
+          'return import(url)'
+        )(`${cdnRoot}/vision_bundle.mjs`) as Promise<any>);
+
+        if (!vision?.FilesetResolver || !vision?.FaceLandmarker) {
+          throw new Error('Face model package did not initialize.');
+        }
         const filesetResolver = await vision.FilesetResolver.forVisionTasks(
-          'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm'
+          `${cdnRoot}/wasm`
         );
         const modelAssetPath =
           'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task';
@@ -293,6 +394,11 @@ export class WebVideoFaceDetector {
           },
           runningMode: 'VIDEO',
           numFaces: 1,
+          // Lower thresholds help recover faces in dim, soft-focus webcams.
+          // Keep them above zero to avoid locking onto background patterns.
+          minFaceDetectionConfidence: 0.35,
+          minFacePresenceConfidence: 0.35,
+          minTrackingConfidence: 0.35,
         });
 
         try {
@@ -308,10 +414,25 @@ export class WebVideoFaceDetector {
             createOptions('CPU')
           );
         }
+        this.detectorStatus = 'ready';
+        this.detectorError = null;
+        return;
+      } catch (error) {
+        lastError = error;
       }
-    } catch {
-      // Offline or blocked CDN — Tier 2 & Tier 3 handle tracking seamlessly
     }
+
+    this.detectorStatus = this.nativeDetector ? 'ready' : 'unavailable';
+    this.detectorError = lastError instanceof Error ? lastError.message : 'Could not load the face model.';
+    console.warn('Xaylens web face model unavailable:', this.detectorError);
+  }
+
+  public getStatus() {
+    return this.detectorStatus;
+  }
+
+  public getError() {
+    return this.detectorError;
   }
 
   public async detectFromVideo(
@@ -367,13 +488,6 @@ export class WebVideoFaceDetector {
             const rollDeg =
               Math.atan2(rightEye.y - leftEye.y, rightEye.x - leftEye.x) *
               (180 / Math.PI);
-
-            this.lastTrackedCenter = {
-              x: nose.x,
-              y: nose.y,
-              scale: fw,
-              roll: rollDeg,
-            };
             this.isDetecting = false;
             return {
               nose,
@@ -388,7 +502,7 @@ export class WebVideoFaceDetector {
             };
           }
         } catch {
-          // Fall through to Tier 2/3
+          // Try the native detector if MediaPipe encounters a frame error.
         }
       }
 
@@ -452,184 +566,15 @@ export class WebVideoFaceDetector {
         }
       }
 
-      // TIER 3: Smart 96x72 Skin + Motion Optical Flow + Dark-Valley Eye/Mouth Locator
-      if (this.offscreenCanvas && this.offscreenCtx && this.prevLuma) {
-        const w = this.offscreenCanvas.width;
-        const h = this.offscreenCanvas.height;
-        this.offscreenCtx.drawImage(video, 0, 0, w, h);
-        const imgData = this.offscreenCtx.getImageData(0, 0, w, h).data;
-
-        let sumX = 0;
-        let sumY = 0;
-        let totalWeight = 0;
-        let minX = w;
-        let maxX = 0;
-        let minY = h;
-        let maxY = 0;
-
-        const prevCx = mirror
-          ? (1.0 - this.lastTrackedCenter.x) * w
-          : this.lastTrackedCenter.x * w;
-        const prevCy = this.lastTrackedCenter.y * h;
-
-        for (let y = 2; y < h - 2; y++) {
-          for (let x = 2; x < w - 2; x++) {
-            const pIdx = y * w + x;
-            const idx = pIdx * 4;
-            const r = imgData[idx];
-            const g = imgData[idx + 1];
-            const b = imgData[idx + 2];
-
-            const luma = 0.299 * r + 0.587 * g + 0.114 * b;
-            const motion = Math.abs(luma - this.prevLuma[pIdx]);
-            this.prevLuma[pIdx] = luma;
-
-            // Broad multi-tone YCbCr + RGB skin detection
-            const cb = 128 - 0.168736 * r - 0.331264 * g + 0.5 * b;
-            const cr = 128 + 0.5 * r - 0.418688 * g - 0.081312 * b;
-            const isSkin =
-              cb >= 72 &&
-              cb <= 136 &&
-              cr >= 128 &&
-              cr <= 182 &&
-              r > 45 &&
-              r > g * 0.95 &&
-              r > b * 1.05 &&
-              luma > 30 &&
-              luma < 245;
-
-            if (isSkin || motion > 14) {
-              // Spatial continuity weight around last tracked head/body position
-              const distFromPrev = Math.hypot((x - prevCx) / w, (y - prevCy) / h);
-              const localityBoost = Math.max(0.25, 1.25 - distFromPrev * 1.6);
-              const skinScore = isSkin ? 1.8 : 0.0;
-              const motionScore = motion > 14 ? Math.min(2.2, motion / 18) : 0.0;
-              const weight = (skinScore + motionScore) * localityBoost;
-
-              sumX += x * weight;
-              sumY += y * weight;
-              totalWeight += weight;
-
-              if (isSkin && weight > 0.9) {
-                if (x < minX) minX = x;
-                if (x > maxX) maxX = x;
-                if (y < minY) minY = y;
-                if (y > maxY) maxY = y;
-              }
-            }
-          }
-        }
-
-        if (totalWeight > 18) {
-          const rawCx = sumX / totalWeight / w;
-          const cx = Math.min(
-            0.85,
-            Math.max(0.15, mirror ? 1.0 - rawCx : rawCx)
-          );
-          const cy = Math.min(0.82, Math.max(0.18, sumY / totalWeight / h));
-          const spanW = maxX > minX ? (maxX - minX) / w : 0.34;
-          const detectedWidth = Math.min(0.6, Math.max(0.24, spanW * 0.78));
-
-          // Estimate head tilt (roll) by comparing left-half vs right-half eye-band dark valleys
-          const headCenterX = Math.round(rawCx * w);
-          const eyeBandYMin = Math.max(2, Math.round((cy - detectedWidth * 0.28) * h));
-          const eyeBandYMax = Math.min(h - 3, Math.round((cy - detectedWidth * 0.05) * h));
-          const eyeSpanPx = Math.max(6, Math.round(detectedWidth * 0.32 * w));
-
-          let leftEyeDarkY = cy - detectedWidth * 0.16;
-          let rightEyeDarkY = cy - detectedWidth * 0.16;
-          let minLumaL = 999;
-          let minLumaR = 999;
-
-          for (let y = eyeBandYMin; y <= eyeBandYMax; y++) {
-            for (
-              let x = Math.max(2, headCenterX - eyeSpanPx);
-              x < headCenterX - 2;
-              x++
-            ) {
-              const l = this.prevLuma[y * w + x];
-              if (l < minLumaL) {
-                minLumaL = l;
-                leftEyeDarkY = y / h;
-              }
-            }
-            for (
-              let x = headCenterX + 2;
-              x <= Math.min(w - 3, headCenterX + eyeSpanPx);
-              x++
-            ) {
-              const l = this.prevLuma[y * w + x];
-              if (l < minLumaR) {
-                minLumaR = l;
-                rightEyeDarkY = y / h;
-              }
-            }
-          }
-
-          const screenLeftEyeY = mirror ? rightEyeDarkY : leftEyeDarkY;
-          const screenRightEyeY = mirror ? leftEyeDarkY : rightEyeDarkY;
-          const eyeHalfSpan = detectedWidth * 0.25;
-          const leftEye = { x: cx - eyeHalfSpan, y: screenLeftEyeY };
-          const rightEye = { x: cx + eyeHalfSpan, y: screenRightEyeY };
-
-          const rollRad = Math.atan2(
-            rightEye.y - leftEye.y,
-            rightEye.x - leftEye.x
-          );
-          const rollDeg = Math.max(-35, Math.min(35, rollRad * (180 / Math.PI)));
-
-          const perpX = -Math.sin(rollRad);
-          const perpY = Math.cos(rollRad);
-          const eyeMidX = (leftEye.x + rightEye.x) * 0.5;
-          const eyeMidY = (leftEye.y + rightEye.y) * 0.5;
-          const eyeDist = Math.hypot(
-            rightEye.x - leftEye.x,
-            rightEye.y - leftEye.y
-          );
-
-          const nose = {
-            x: eyeMidX + perpX * eyeDist * 0.36,
-            y: eyeMidY + perpY * eyeDist * 0.36,
-          };
-          const mouth = {
-            x: eyeMidX + perpX * eyeDist * 0.78,
-            y: eyeMidY + perpY * eyeDist * 0.78,
-          };
-          const forehead = {
-            x: eyeMidX - perpX * eyeDist * 0.48,
-            y: eyeMidY - perpY * eyeDist * 0.48,
-          };
-          const chin = {
-            x: eyeMidX + perpX * eyeDist * 1.15,
-            y: eyeMidY + perpY * eyeDist * 1.15,
-          };
-
-          this.lastTrackedCenter = {
-            x: nose.x,
-            y: nose.y,
-            scale: detectedWidth,
-            roll: rollDeg,
-          };
-
-          this.isDetecting = false;
-          return {
-            nose,
-            leftEye,
-            rightEye,
-            mouth,
-            forehead,
-            chin,
-            faceWidth: detectedWidth,
-            faceHeight: detectedWidth * 1.25,
-            roll: rollDeg,
-          };
-        }
-      }
+      // No face-safe offline detector is available without MediaPipe or FaceDetector.
+      return null;
     } catch {
-      // Ignore transient frame read errors
+      // Ignore transient frame read errors and retry on the next frame.
+    } finally {
+      // Always release the in-flight lock, even when this frame has no face.
+      this.isDetecting = false;
     }
 
-    this.isDetecting = false;
     return null;
   }
 }

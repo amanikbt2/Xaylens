@@ -19,6 +19,7 @@ export interface CameraViewProps {
     lightingStatus: 'good' | 'low_light' | 'backlit' | 'searching';
     hasFace: boolean;
     faceWidth?: number;
+    detectorStatus?: 'loading' | 'ready' | 'unavailable';
   }) => void;
   style?: any;
 }

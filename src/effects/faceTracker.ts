@@ -8,9 +8,9 @@ export class FaceTracker {
   private smoothingFactor = 0.45; // Fast, responsive lock onto real face movement
   private timeOffset = 0;
 
-  private currentConfidence = 0.95;
-  private currentQuality: 'perfect' | 'poor' | 'searching' = 'perfect';
-  private currentLightingStatus: 'good' | 'low_light' | 'backlit' | 'searching' = 'good';
+  private currentConfidence = 0;
+  private currentQuality: 'perfect' | 'poor' | 'searching' = 'searching';
+  private currentLightingStatus: 'good' | 'low_light' | 'backlit' | 'searching' = 'searching';
 
   /**
    * Step the tracker forward and return smoothly interpolated real-time landmarks
@@ -22,15 +22,15 @@ export class FaceTracker {
     const hasRecentDetection = timeSinceLastDetection < 1800;
 
     // Evaluate tracking quality based on detection recency and detector signals
-    let quality: 'perfect' | 'poor' | 'searching' = 'perfect';
-    let lightingStatus: 'good' | 'low_light' | 'backlit' | 'searching' = 'good';
-    let confidence = 0.95;
+    let quality: 'perfect' | 'poor' | 'searching' = 'searching';
+    let lightingStatus: 'good' | 'low_light' | 'backlit' | 'searching' = 'searching';
+    let confidence = 0;
 
     if (!hasRecentDetection) {
       if (timeSinceLastDetection < 3500) {
         quality = 'poor';
         lightingStatus = 'low_light';
-        confidence = 0.55;
+        confidence = 0.25;
       } else {
         quality = 'searching';
         lightingStatus = 'searching';
@@ -98,7 +98,7 @@ export class FaceTracker {
     };
 
     return {
-      hasFace: hasRecentDetection || confidence > 0.4,
+      hasFace: hasRecentDetection && confidence > 0.4,
       landmarks: this.currentLandmarks,
       confidence,
       quality,

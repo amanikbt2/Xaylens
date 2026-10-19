@@ -29,8 +29,6 @@ import { usePermissions } from '../hooks/usePermissions';
 import { useFaceStatus } from '../hooks/useFaceStatus';
 import { Colors } from '../constants/colors';
 import { CapturedMedia } from '../types/camera';
-import * as ImagePicker from 'expo-image-picker';
-import { CUSTOM_BACKGROUND_LENS_ID, createCustomBackgroundLens } from '../lenses';
 import { Lens } from '../types/lens';
 
 export const CameraScreen: React.FC = () => {
@@ -78,6 +76,7 @@ export const CameraScreen: React.FC = () => {
     lightingStatus?: 'good' | 'low_light' | 'backlit' | 'searching';
     hasFace?: boolean;
     faceWidth?: number;
+    detectorStatus?: 'loading' | 'ready' | 'unavailable';
   }>({});
 
   const handleFaceStatusChange = useCallback(
@@ -86,6 +85,7 @@ export const CameraScreen: React.FC = () => {
       lightingStatus: 'good' | 'low_light' | 'backlit' | 'searching';
       hasFace: boolean;
       faceWidth?: number;
+      detectorStatus?: 'loading' | 'ready' | 'unavailable';
     }) => {
       setTrackingState(status);
     },
@@ -98,8 +98,33 @@ export const CameraScreen: React.FC = () => {
     trackingState.quality,
     trackingState.lightingStatus,
     trackingState.hasFace !== undefined ? trackingState.hasFace : false,
-    trackingState.faceWidth
+    trackingState.faceWidth,
+    trackingState.detectorStatus
   );
+
+  useEffect(() => {
+    if (Platform.OS !== 'web' || typeof window === 'undefined') return;
+
+    const handleFavoriteShortcut = (event: KeyboardEvent) => {
+      if (!event.altKey || event.ctrlKey || event.metaKey || event.code !== 'KeyA') {
+        return;
+      }
+
+      const target = event.target as HTMLElement | null;
+      if (
+        target?.isContentEditable ||
+        target?.closest('input, textarea, select, [contenteditable="true"], [role="textbox"]')
+      ) {
+        return;
+      }
+
+      event.preventDefault();
+      toggleFavorite(activeLens.id);
+    };
+
+    window.addEventListener('keydown', handleFavoriteShortcut);
+    return () => window.removeEventListener('keydown', handleFavoriteShortcut);
+  }, [activeLens.id, toggleFavorite]);
 
   const {
     isLoading,
@@ -160,27 +185,8 @@ export const CameraScreen: React.FC = () => {
   }, []);
 
   const handleSelectExploreLens = useCallback(
-    async (lens: Lens, tab?: CategoryFilter) => {
-      if (lens.id !== CUSTOM_BACKGROUND_LENS_ID) {
-        injectAndSelectLens(lens, facing, tab);
-        return;
-      }
-
-      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (!permission.granted) return;
-
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ['images', 'videos'],
-        allowsEditing: false,
-        aspect: [9, 16],
-        quality: 1,
-      });
-
-      if (!result.canceled && result.assets[0]?.uri) {
-        const uri = result.assets[0].uri;
-        const mediaType = result.assets[0].type === 'video' ? 'video' : 'image';
-        injectAndSelectLens(createCustomBackgroundLens(uri, mediaType), facing, 'background');
-      }
+    (lens: Lens, tab?: CategoryFilter) => {
+      injectAndSelectLens(lens, facing, tab);
     },
     [facing, injectAndSelectLens]
   );

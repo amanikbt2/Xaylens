@@ -21,6 +21,7 @@ import { Colors } from '../constants/colors';
 import {
   VERTEX_SHADER_SOURCE,
   FRAGMENT_SHADER_SOURCE,
+  getCustomLensDistortion,
   getLensShaderMode,
   WebVideoFaceDetector,
 } from '../effects/webglFaceShader';
@@ -272,6 +273,7 @@ export const PlatformCameraView = forwardRef<CameraViewRef, CameraViewProps>(
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
 
       const uResolution = gl.getUniformLocation(program, 'u_resolution');
+      const uVideoResolution = gl.getUniformLocation(program, 'u_videoResolution');
       const uMirror = gl.getUniformLocation(program, 'u_mirror');
       const uLensMode = gl.getUniformLocation(program, 'u_lensMode');
       const uNose = gl.getUniformLocation(program, 'u_nose');
@@ -283,6 +285,8 @@ export const PlatformCameraView = forwardRef<CameraViewRef, CameraViewProps>(
       const uFaceScale = gl.getUniformLocation(program, 'u_faceScale');
       const uRoll = gl.getUniformLocation(program, 'u_roll');
       const uTime = gl.getUniformLocation(program, 'u_time');
+      const uCustomDistortion = gl.getUniformLocation(program, 'u_customDistortion');
+      const uCustomCenter = gl.getUniformLocation(program, 'u_customCenter');
 
       let animId: number;
       let lastFrameTime = performance.now();
@@ -319,17 +323,41 @@ export const PlatformCameraView = forwardRef<CameraViewRef, CameraViewProps>(
         }
 
         const state = trackerRef.current.step(dt);
-        const lm = state.landmarks;
+        const sourceLm = state.landmarks;
 
         if (now - lastOverlaySyncTime > 32) {
           lastOverlaySyncTime = now;
-          setLiveLandmarks({ ...lm });
+          const viewWidth = canvas.clientWidth || 720;
+          const viewHeight = canvas.clientHeight || 1280;
+          const sourceAspect = video.videoWidth / Math.max(video.videoHeight, 1);
+          const viewAspect = viewWidth / Math.max(viewHeight, 1);
+          const cropWidth = sourceAspect > viewAspect ? viewAspect / sourceAspect : 1;
+          const cropHeight = sourceAspect > viewAspect ? 1 : sourceAspect / viewAspect;
+          const toViewPoint = (point: { x: number; y: number }) => ({
+            x: (point.x - (1 - cropWidth) / 2) / cropWidth,
+            y: (point.y - (1 - cropHeight) / 2) / cropHeight,
+          });
+          const lm = {
+            ...sourceLm,
+            nose: toViewPoint(sourceLm.nose),
+            leftEye: toViewPoint(sourceLm.leftEye),
+            rightEye: toViewPoint(sourceLm.rightEye),
+            mouth: toViewPoint(sourceLm.mouth),
+            forehead: toViewPoint(sourceLm.forehead),
+            chin: toViewPoint(sourceLm.chin),
+            leftEar: toViewPoint(sourceLm.leftEar),
+            rightEar: toViewPoint(sourceLm.rightEar),
+            faceWidth: sourceLm.faceWidth / cropWidth,
+            faceHeight: sourceLm.faceHeight / cropHeight,
+          };
+          setLiveLandmarks(lm);
           if (onFaceStatusChangeRef.current) {
             onFaceStatusChangeRef.current({
               quality: state.quality,
               lightingStatus: state.lightingStatus,
               hasFace: state.hasFace,
               faceWidth: lm.faceWidth,
+              detectorStatus: detectorRef.current?.getStatus(),
             });
           }
         }
@@ -357,15 +385,36 @@ export const PlatformCameraView = forwardRef<CameraViewRef, CameraViewProps>(
             video
           );
 
+          const sourceAspect = video.videoWidth / Math.max(video.videoHeight, 1);
+          const viewAspect = pixelW / Math.max(pixelH, 1);
+          const cropWidth = sourceAspect > viewAspect ? viewAspect / sourceAspect : 1;
+          const cropHeight = sourceAspect > viewAspect ? 1 : sourceAspect / viewAspect;
+          const toViewPoint = (point: { x: number; y: number }) => ({
+            x: (point.x - (1 - cropWidth) / 2) / cropWidth,
+            y: (point.y - (1 - cropHeight) / 2) / cropHeight,
+          });
+          const lm = {
+            ...sourceLm,
+            nose: toViewPoint(sourceLm.nose),
+            leftEye: toViewPoint(sourceLm.leftEye),
+            rightEye: toViewPoint(sourceLm.rightEye),
+            mouth: toViewPoint(sourceLm.mouth),
+            forehead: toViewPoint(sourceLm.forehead),
+            chin: toViewPoint(sourceLm.chin),
+            faceWidth: sourceLm.faceWidth / cropWidth,
+            faceHeight: sourceLm.faceHeight / cropHeight,
+          };
           gl.uniform2f(uResolution, pixelW, pixelH);
+          gl.uniform2f(uVideoResolution, video.videoWidth, video.videoHeight);
           gl.uniform1f(uMirror, facingRef.current === 'front' ? 1.0 : 0.0);
+          const selectedLenses = comboLensesRef.current && comboLensesRef.current.length > 0
+            ? comboLensesRef.current
+            : activeLensRef.current;
           gl.uniform1i(
             uLensMode,
-            getLensShaderMode(
-              comboLensesRef.current && comboLensesRef.current.length > 0
-                ? comboLensesRef.current
-                : activeLensRef.current
-            )
+            state.hasFace
+              ? getLensShaderMode(selectedLenses)
+              : 0
           );
           gl.uniform2f(uNose, lm.nose.x, lm.nose.y);
           gl.uniform2f(uLeftEye, lm.leftEye.x, lm.leftEye.y);
@@ -376,6 +425,9 @@ export const PlatformCameraView = forwardRef<CameraViewRef, CameraViewProps>(
           gl.uniform1f(uFaceScale, (lm.faceWidth || 0.35) / 0.32);
           gl.uniform1f(uRoll, ((lm.roll || 0) * Math.PI) / 180.0);
           gl.uniform1f(uTime, (now - startTime) * 0.001);
+          const customDistortion = getCustomLensDistortion(selectedLenses, lm);
+          gl.uniform4f(uCustomDistortion, ...customDistortion.params);
+          gl.uniform2f(uCustomCenter, customDistortion.center.x, customDistortion.center.y);
 
           gl.drawArrays(gl.TRIANGLES, 0, 6);
 

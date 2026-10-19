@@ -96,11 +96,7 @@ export const LensCarousel: React.FC<LensCarouselProps> = ({
   const [containerWidth, setContainerWidth] = useState<number>(defaultWidth);
   const sideSpacerWidth = Math.max(0, (containerWidth - LENS_ITEM_WIDTH) / 2);
 
-  const isUserDraggingRef = useRef(false);
-  const currentScrollOffsetRef = useRef(0);
   const lastHapticIndexRef = useRef(-1);
-  const isProgrammaticScrollRef = useRef(false);
-  const programmaticTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Append Explore Lenses launcher circle to carousel data
   const carouselData = useMemo(() => {
@@ -109,24 +105,14 @@ export const LensCarousel: React.FC<LensCarouselProps> = ({
     }
     return lenses;
   }, [lenses, onOpenExplore]);
-
-  const snapOffsets = useMemo(
-    () => carouselData.map((_, index) => index * LENS_ITEM_WIDTH),
-    [carouselData]
-  );
+  const carouselDataRef = useRef(carouselData);
+  carouselDataRef.current = carouselData;
 
   // Smooth helper to scroll FlatList so the target index is centered
   const scrollToLensIndex = useCallback(
     (index: number, animated = true) => {
-      if (index < 0 || index >= carouselData.length || !flatListRef.current) return;
+      if (index < 0 || !flatListRef.current) return;
       try {
-        if (animated) {
-          isProgrammaticScrollRef.current = true;
-          if (programmaticTimerRef.current) clearTimeout(programmaticTimerRef.current);
-          programmaticTimerRef.current = setTimeout(() => {
-            isProgrammaticScrollRef.current = false;
-          }, 350);
-        }
         flatListRef.current.scrollToOffset({
           offset: index * LENS_ITEM_WIDTH,
           animated,
@@ -135,13 +121,13 @@ export const LensCarousel: React.FC<LensCarouselProps> = ({
         // Ignore layout timing
       }
     },
-    [carouselData.length]
+    []
   );
 
-  // Re-center active lens whenever the active item changes or after modal selection
+  // Center the active lens only when the selected lens or viewport changes.
   useEffect(() => {
     if (isRecording) return;
-    const index = carouselData.findIndex((l) => l.id === activeLens.id);
+    const index = carouselDataRef.current.findIndex((l) => l.id === activeLens.id);
     if (index === -1) return;
 
     const frame = requestAnimationFrame(() => {
@@ -149,7 +135,7 @@ export const LensCarousel: React.FC<LensCarouselProps> = ({
     });
 
     return () => cancelAnimationFrame(frame);
-  }, [activeLens.id, carouselData, containerWidth, isRecording, scrollToLensIndex]);
+  }, [activeLens.id, containerWidth, isRecording, scrollToLensIndex]);
 
   const handleLayout = useCallback(
     (e: LayoutChangeEvent) => {
@@ -161,15 +147,10 @@ export const LensCarousel: React.FC<LensCarouselProps> = ({
     [containerWidth]
   );
 
-  const handleScrollBeginDrag = useCallback(() => {
-    isUserDraggingRef.current = true;
-  }, []);
-
   // Track scroll position and fire gentle haptics as user glides through lenses
   const handleScroll = useCallback(
     (e: NativeSyntheticEvent<NativeScrollEvent>) => {
       const offsetX = e.nativeEvent.contentOffset.x;
-      currentScrollOffsetRef.current = offsetX;
       const centerIdx = Math.max(
         0,
         Math.min(carouselData.length - 1, Math.round(offsetX / LENS_ITEM_WIDTH))
@@ -182,41 +163,6 @@ export const LensCarousel: React.FC<LensCarouselProps> = ({
     [carouselData.length]
   );
 
-  // When swipe momentum ends and settles on a lens. The carousel deliberately
-  // settles only once here; snapping during onScrollEndDrag makes Android
-  // fight its own momentum and visibly bounce at the list boundaries.
-  const handleScrollEnd = useCallback(
-    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-      const offsetX = e.nativeEvent.contentOffset.x;
-      currentScrollOffsetRef.current = offsetX;
-      const centerIdx = Math.max(
-        0,
-        Math.min(carouselData.length - 1, Math.round(offsetX / LENS_ITEM_WIDTH))
-      );
-
-      // Correct any fractional offset without starting another animation.
-      scrollToLensIndex(centerIdx, false);
-
-      const targetItem = carouselData[centerIdx];
-      if (targetItem) {
-        if (targetItem.id === 'explore-more') {
-          if (onOpenExplore) {
-            triggerLensSelectHaptic();
-            onOpenExplore();
-          }
-        } else if (targetItem.id !== activeLens.id) {
-          triggerLensSelectHaptic();
-          onSelectLens(targetItem);
-        }
-      }
-
-      setTimeout(() => {
-        isUserDraggingRef.current = false;
-      }, 50);
-    },
-    [activeLens.id, carouselData, onOpenExplore, onSelectLens, scrollToLensIndex]
-  );
-
   // Tapping any flanking lens scrolls it smoothly to the center and selects it
   const handleTapLens = useCallback(
     (item: Lens) => {
@@ -227,7 +173,6 @@ export const LensCarousel: React.FC<LensCarouselProps> = ({
         }
         return;
       }
-      isUserDraggingRef.current = false;
       const idx = carouselData.findIndex((l) => l.id === item.id);
       if (idx !== -1) {
         triggerLensSelectHaptic();
@@ -397,23 +342,13 @@ export const LensCarousel: React.FC<LensCarouselProps> = ({
               }
               contentContainerStyle={styles.flatListContent}
               style={{ width: '100%', height: 108 }}
-              snapToOffsets={snapOffsets}
               decelerationRate="fast"
               disableIntervalMomentum={false}
               bounces={false}
               alwaysBounceHorizontal={false}
               overScrollMode="never"
               scrollEventThrottle={16}
-              onScrollBeginDrag={handleScrollBeginDrag}
               onScroll={handleScroll}
-              onMomentumScrollEnd={handleScrollEnd}
-              onContentSizeChange={() => {
-                if (isRecording) return;
-                const index = carouselData.findIndex((l) => l.id === activeLens.id);
-                if (index !== -1) {
-                  requestAnimationFrame(() => scrollToLensIndex(index, false));
-                }
-              }}
               onEndReached={handleEndReached}
               onEndReachedThreshold={0.5}
               getItemLayout={(_, index) => ({
