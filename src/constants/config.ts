@@ -6,7 +6,6 @@ export const APP_CONFIG = {
   author: 'Xaylens Labs',
   supportEmail: 'amanikbt1@gmail.com',
   privacyPolicyUrl: 'https://xaylens.app/privacy',
-  maxVideoDurationSeconds: 60,
   defaultFlashMode: 'off' as const,
   defaultCameraFacing: 'front' as const,
   defaultCaptureMode: 'video' as const,

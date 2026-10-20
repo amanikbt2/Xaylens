@@ -1,17 +1,11 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { APP_CONFIG } from '../constants/config';
 import { triggerRecordingHaptic } from '../utils/haptics';
 
-export const useRecording = (
-  onMaxDurationReached?: () => void,
-  maxDurationSeconds: number | null = APP_CONFIG.maxVideoDurationSeconds
-) => {
+export const useRecording = () => {
   const [isRecording, setIsRecording] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [secondsElapsed, setSecondsElapsed] = useState(0);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const elapsedSecondsRef = useRef(0);
-  const maxDurationReachedRef = useRef(false);
 
   const formatTime = (totalSeconds: number): string => {
     const mins = Math.floor(totalSeconds / 60);
@@ -22,31 +16,14 @@ export const useRecording = (
   const startTimer = useCallback(() => {
     if (intervalRef.current) clearInterval(intervalRef.current);
     intervalRef.current = setInterval(() => {
-      const next = elapsedSecondsRef.current + 1;
-      elapsedSecondsRef.current = next;
-      setSecondsElapsed(next);
-
-      if (
-        maxDurationSeconds !== null &&
-        next >= maxDurationSeconds &&
-        !maxDurationReachedRef.current
-      ) {
-        maxDurationReachedRef.current = true;
-        if (intervalRef.current) clearInterval(intervalRef.current);
-        intervalRef.current = null;
-        setIsRecording(false);
-        setIsPaused(false);
-        onMaxDurationReached?.();
-      }
+      setSecondsElapsed((prev) => prev + 1);
     }, 1000);
-  }, [maxDurationSeconds, onMaxDurationReached]);
+  }, []);
 
   const startRecording = useCallback(() => {
     triggerRecordingHaptic();
     setIsRecording(true);
     setIsPaused(false);
-    elapsedSecondsRef.current = 0;
-    maxDurationReachedRef.current = false;
     setSecondsElapsed(0);
     startTimer();
   }, [startTimer]);

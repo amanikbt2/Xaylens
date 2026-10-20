@@ -217,16 +217,6 @@ export const CameraScreen: React.FC = () => {
   );
 
   // Video Recording Hook
-  const handleMaxDuration = useCallback(async () => {
-    if (cameraRef.current) {
-      const media = await cameraRef.current.stopRecordingAsync();
-      if (media) {
-        setPreviewMedia(media);
-        setIsPreviewVisible(true);
-      }
-    }
-  }, []);
-
   const {
     isRecording,
     isPaused,
@@ -235,10 +225,7 @@ export const CameraScreen: React.FC = () => {
     pauseRecording,
     resumeRecording,
     stopRecording,
-  } = useRecording(
-    handleMaxDuration,
-    Platform.OS === 'web' ? null : undefined
-  );
+  } = useRecording();
 
   useEffect(() => {
     if (!isRecording) setIsBackgroundVideoAudioEnabled(false);

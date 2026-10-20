@@ -392,7 +392,7 @@ export const PlatformCameraView = forwardRef<CameraViewRef, CameraViewProps>(
       startRecordingAsync: async () => {
         if (recorderRef.current) return;
         try {
-          const recorder = await videoOutput.createRecorder({ maxDuration: 60 });
+          const recorder = await videoOutput.createRecorder({});
           recorderRef.current = recorder;
           recordingResultRef.current = new Promise<string>((resolve, reject) => {
             recorder.startRecording(resolve, reject).catch(reject);
