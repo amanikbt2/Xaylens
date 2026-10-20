@@ -115,32 +115,37 @@ export const useLens = (initialLensId: string = 'normal') => {
   // Compute carousel lenses strictly by categoryFilter
   const carouselLenses = useMemo(() => {
     const normalItem = ALL_50_LENSES.find((l) => l.id === 'normal') || normalLens;
+    let list: Lens[];
 
     if (categoryFilter === 'all') {
-      const list = [...ALL_50_LENSES];
+      list = [...ALL_50_LENSES];
       const normalIdx = list.findIndex((l) => l.id === 'normal');
       if (normalIdx > 0) {
         const [nItem] = list.splice(normalIdx, 1);
         list.unshift(nItem);
       }
-      return list;
-    }
-
-    if (categoryFilter === 'favorites') {
-      const favs = ALL_50_LENSES.filter((l) => favoriteIds.includes(l.id));
-      if (!favs.some((l) => l.id === 'normal')) {
-        return [normalItem, ...favs];
+    } else if (categoryFilter === 'favorites') {
+      const favorites = ALL_50_LENSES.filter((l) => favoriteIds.includes(l.id));
+      if (!favorites.some((l) => l.id === 'normal')) {
+        list = [normalItem, ...favorites];
+      } else {
+        list = favorites;
       }
-      return favs;
+    } else {
+      // Filter strictly to the chosen category
+      const categoryLenses = ALL_50_LENSES.filter((l) => l.category === categoryFilter);
+      list = categoryLenses.some((l) => l.id === 'normal')
+        ? categoryLenses
+        : [normalItem, ...categoryLenses];
     }
 
-    // Filter strictly to the chosen category
-    const catLenses = ALL_50_LENSES.filter((l) => l.category === categoryFilter);
-    if (!catLenses.some((l) => l.id === 'normal')) {
-      return [normalItem, ...catLenses];
+    // Explore can create a user-picked background at runtime. Keep that lens
+    // in the row while active so it can be centered and tapped to record.
+    if (!list.some((lens) => lens.id === activeLens.id)) {
+      list.push(activeLens);
     }
-    return catLenses;
-  }, [categoryFilter, favoriteIds]);
+    return list;
+  }, [activeLens, categoryFilter, favoriteIds]);
 
   const selectLens = useCallback(
     (lens: Lens, cameraFacing: 'front' | 'back' = 'front') => {

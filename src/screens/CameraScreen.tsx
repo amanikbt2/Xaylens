@@ -235,7 +235,10 @@ export const CameraScreen: React.FC = () => {
     pauseRecording,
     resumeRecording,
     stopRecording,
-  } = useRecording(handleMaxDuration);
+  } = useRecording(
+    handleMaxDuration,
+    Platform.OS === 'web' ? null : undefined
+  );
 
   useEffect(() => {
     if (!isRecording) setIsBackgroundVideoAudioEnabled(false);
